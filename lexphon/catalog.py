@@ -11,7 +11,9 @@ from urllib.parse import urlparse
 
 from .errors import CatalogError
 
-DEFAULT_CATALOG_URL = "https://raw.githubusercontent.com/buchwandler/g2lex-data/main/catalog/catalog.json"
+DEFAULT_CATALOG_URL = (
+    "https://raw.githubusercontent.com/buchwandler/g2lex-data/main/catalog/catalog.json"
+)
 _HASH_RE = re.compile(r"^[0-9a-f]{64}$")
 _ID_RE = re.compile(r"^[a-z]{2,3}(?:-[a-z0-9]{2,8})*:[a-z0-9][a-z0-9._-]*$")
 _LOCALE_RE = re.compile(r"^[a-z]{2,3}(?:-[a-z0-9]{2,8})*$")
@@ -90,11 +92,15 @@ class CatalogArtifact:
             raise CatalogError(f"artifact {identifier} has unsupported kind: {kind!r}")
         encoding = _require_text(value, "phoneme_encoding", f"artifact {identifier}").casefold()
         if encoding not in _SUPPORTED_ENCODINGS:
-            raise CatalogError(f"artifact {identifier} has unsupported phoneme_encoding: {encoding!r}")
+            raise CatalogError(
+                f"artifact {identifier} has unsupported phoneme_encoding: {encoding!r}"
+            )
         if kind == "membership" and encoding != "none":
             raise CatalogError(f"membership artifact {identifier} must use phoneme_encoding 'none'")
         if kind == "pronunciation" and encoding == "none":
-            raise CatalogError(f"pronunciation artifact {identifier} cannot use phoneme_encoding 'none'")
+            raise CatalogError(
+                f"pronunciation artifact {identifier} cannot use phoneme_encoding 'none'"
+            )
         data_version = _require_text(value, "data_version", f"artifact {identifier}")
         release_tag = _require_text(value, "release_tag", f"artifact {identifier}")
         manifest = _validate_reference(value.get("manifest"), "manifest", require_size=False)
@@ -117,6 +123,7 @@ class CatalogArtifact:
             asset=asset,
             source=source,
         )
+
 
 @dataclass(frozen=True, slots=True)
 class Catalog:
@@ -150,7 +157,9 @@ class Catalog:
 
     def for_language(self, language: str) -> tuple[CatalogArtifact, ...]:
         key = language.casefold().replace("_", "-")
-        return tuple(item for item in self.artifacts if item.language.casefold().replace("_", "-") == key)
+        return tuple(
+            item for item in self.artifacts if item.language.casefold().replace("_", "-") == key
+        )
 
 
 def _read_location(location: str) -> bytes:

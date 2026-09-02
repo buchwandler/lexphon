@@ -52,7 +52,13 @@ class Phonemizer:
                     raise LexiconNotUsableError(
                         f"lexicon {identifier!r} has no pronunciation alphabet and cannot be a layer"
                     )
-                if encoding.casefold().replace("-", "") not in {"ipa", "unicodeipa", "arpabet", "cmu", "cmudict"}:
+                if encoding.casefold().replace("-", "") not in {
+                    "ipa",
+                    "unicodeipa",
+                    "arpabet",
+                    "cmu",
+                    "cmudict",
+                }:
                     raise UnsupportedAlphabetError(
                         f"unsupported pronunciation encoding {encoding!r} for {identifier!r}"
                     )
@@ -114,7 +120,9 @@ class Phonemizer:
                     variants=(value,),
                     selector_tag=tag,
                 )
-        return PronunciationToken(text=token, pronunciation=None, source="unknown", selector_tag=tag)
+        return PronunciationToken(
+            text=token, pronunciation=None, source="unknown", selector_tag=tag
+        )
 
     def phonemize_tokens(self, text: str, *, tag: str | None = None) -> PhonemizationResult:
         self._ensure_open()
@@ -122,7 +130,9 @@ class Phonemizer:
         for token, punctuation in tokenize(text):
             if punctuation:
                 tokens.append(
-                    PronunciationToken(text=token, pronunciation=None, source="literal", punctuation=True)
+                    PronunciationToken(
+                        text=token, pronunciation=None, source="literal", punctuation=True
+                    )
                 )
             else:
                 tokens.append(self.lookup(token, tag=tag))

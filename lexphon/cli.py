@@ -13,7 +13,9 @@ from .store import DataStore
 
 
 def _data_main(argv: list[str]) -> int:
-    parser = argparse.ArgumentParser(prog="lexphon data", description="Manage installed G2Lex pronunciation data")
+    parser = argparse.ArgumentParser(
+        prog="lexphon data", description="Manage installed G2Lex pronunciation data"
+    )
     parser.add_argument("--catalog", help="catalog URL/path (default: g2lex-data main catalog)")
     parser.add_argument("--data-home")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -72,7 +74,9 @@ def _phonemize_main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(prog="lexphon", description="Lexicon-driven IPA phonemizer")
     parser.add_argument("--version", action="version", version=__version__)
     parser.add_argument("-v", "--voice", "--language", dest="language", required=True)
-    parser.add_argument("--lexicon", action="append", dest="lexicons", help="installed lexicon id; repeatable")
+    parser.add_argument(
+        "--lexicon", action="append", dest="lexicons", help="installed lexicon id; repeatable"
+    )
     parser.add_argument("--tag", help="selector tag for tagged G2Lex values")
     parser.add_argument("--fallback", choices=["none", "espeak"], default="none")
     parser.add_argument("--unknown", choices=["error", "keep", "skip"], default="error")
@@ -97,7 +101,9 @@ def _phonemize_main(argv: list[str]) -> int:
                     {
                         "text": result.text,
                         "language": result.language,
-                        "phonemes": result.render(unknown=args.unknown, punctuation=args.punctuation),
+                        "phonemes": result.render(
+                            unknown=args.unknown, punctuation=args.punctuation
+                        ),
                         "tokens": [
                             {
                                 "text": token.text,

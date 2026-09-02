@@ -10,14 +10,16 @@ except ModuleNotFoundError:  # pragma: no cover
     import tomli as tomllib  # type: ignore[no-redef]
 
 
-_APOSTROPHE_MAP = str.maketrans({
-    "‘": "'",
-    "’": "'",
-    "‛": "'",
-    "＇": "'",
-    "`": "'",
-    "´": "'",
-})
+_APOSTROPHE_MAP = str.maketrans(
+    {
+        "‘": "'",
+        "’": "'",
+        "‛": "'",
+        "＇": "'",
+        "`": "'",
+        "´": "'",
+    }
+)
 
 
 @dataclass(frozen=True, slots=True)

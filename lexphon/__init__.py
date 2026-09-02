@@ -1,4 +1,5 @@
 """Lexicon-driven phonemization on top of G2Lex."""
+
 from __future__ import annotations
 
 from ._version import __version__

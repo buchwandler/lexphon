@@ -64,7 +64,9 @@ class DataStore:
         try:
             value = json.loads(self.index_path.read_text(encoding="utf-8"))
         except Exception as exc:
-            raise DataIntegrityError(f"invalid Lexphon store index {self.index_path}: {exc}") from exc
+            raise DataIntegrityError(
+                f"invalid Lexphon store index {self.index_path}: {exc}"
+            ) from exc
         if not isinstance(value, dict) or value.get("schema_version", 1) != 1:
             raise DataIntegrityError(f"invalid Lexphon store index: {self.index_path}")
         artifacts = value.get("artifacts")
@@ -108,7 +110,11 @@ class DataStore:
         asset_path = version_dir / asset_name
         manifest_path = version_dir / manifest_name
 
-        if asset_path.is_file() and manifest_path.is_file() and self._verify_files(artifact, asset_path, manifest_path):
+        if (
+            asset_path.is_file()
+            and manifest_path.is_file()
+            and self._verify_files(artifact, asset_path, manifest_path)
+        ):
             self._register(artifact, asset_path, manifest_path)
             return asset_path
 
@@ -164,21 +170,35 @@ class DataStore:
             raise DataIntegrityError(f"manifest id does not match catalog for {artifact.id}")
         legacy_hash = manifest.get("asset_sha256")
         if legacy_hash is not None and legacy_hash != artifact.asset["sha256"]:
-            raise DataIntegrityError(f"manifest asset hash does not match catalog for {artifact.id}")
+            raise DataIntegrityError(
+                f"manifest asset hash does not match catalog for {artifact.id}"
+            )
         if "contract_version" in manifest:
-            required = ("contract_version", "manifest_version", "data_version", "kind", "language", "name", "phoneme_encoding")
+            required = (
+                "contract_version",
+                "manifest_version",
+                "data_version",
+                "kind",
+                "language",
+                "name",
+                "phoneme_encoding",
+            )
             if any(key not in manifest for key in required):
                 raise DataIntegrityError(f"manifest is missing required metadata for {artifact.id}")
             if manifest["contract_version"] != 1 or manifest["manifest_version"] != 1:
                 raise DataIntegrityError(f"unsupported manifest contract for {artifact.id}")
         return manifest
 
-    def _verify_manifest_agreement(self, artifact: CatalogArtifact, manifest: dict[str, Any]) -> None:
+    def _verify_manifest_agreement(
+        self, artifact: CatalogArtifact, manifest: dict[str, Any]
+    ) -> None:
         for key in ("id", "data_version", "kind", "phoneme_encoding"):
             if key in manifest and manifest[key] != getattr(artifact, key):
                 raise DataIntegrityError(f"catalog and manifest {key} disagree for {artifact.id}")
         manifest_language = manifest.get("language")
-        if manifest_language is not None and manifest_language.casefold().replace("_", "-") != artifact.language.casefold().replace("_", "-"):
+        if manifest_language is not None and manifest_language.casefold().replace(
+            "_", "-"
+        ) != artifact.language.casefold().replace("_", "-"):
             raise DataIntegrityError(f"catalog and manifest language disagree for {artifact.id}")
         manifest_name = manifest.get("name")
         if manifest_name is not None and manifest_name != artifact.name:
@@ -188,29 +208,44 @@ class DataStore:
             expected = {"sha256": artifact.asset["sha256"], "size": artifact.asset["size"]}
             for key, value in expected.items():
                 if key in asset and asset[key] != value:
-                    raise DataIntegrityError(f"catalog and manifest asset {key} disagree for {artifact.id}")
+                    raise DataIntegrityError(
+                        f"catalog and manifest asset {key} disagree for {artifact.id}"
+                    )
             logical_hash = artifact.asset.get("logical_sha256")
             if logical_hash and asset.get("logical_sha256") not in {None, logical_hash}:
-                raise DataIntegrityError(f"catalog and manifest logical hash disagree for {artifact.id}")
+                raise DataIntegrityError(
+                    f"catalog and manifest logical hash disagree for {artifact.id}"
+                )
         for key in ("asset_sha256", "logical_sha256"):
             if key in manifest:
                 expected = artifact.asset.get("sha256" if key == "asset_sha256" else key)
                 if expected is not None and manifest[key] != expected:
-                    raise DataIntegrityError(f"catalog and manifest {key} disagree for {artifact.id}")
+                    raise DataIntegrityError(
+                        f"catalog and manifest {key} disagree for {artifact.id}"
+                    )
 
     def _verify_g2lex(self, artifact: CatalogArtifact, asset_path: Path) -> None:
         try:
             with g2lex.open(asset_path) as lexicon:
                 len(lexicon)
                 source_encoding = lexicon.metadata.get("source", {}).get("pronunciation_alphabet")
-                if source_encoding is not None and source_encoding.casefold() != artifact.phoneme_encoding:
-                    raise DataIntegrityError(f"G2Lex encoding does not match catalog for {artifact.id}")
+                if (
+                    source_encoding is not None
+                    and source_encoding.casefold() != artifact.phoneme_encoding
+                ):
+                    raise DataIntegrityError(
+                        f"G2Lex encoding does not match catalog for {artifact.id}"
+                    )
         except DataIntegrityError:
             raise
         except Exception as exc:
-            raise DataIntegrityError(f"G2Lex asset cannot be opened for {artifact.id}: {exc}") from exc
+            raise DataIntegrityError(
+                f"G2Lex asset cannot be opened for {artifact.id}: {exc}"
+            ) from exc
 
-    def _verify_files(self, artifact: CatalogArtifact, asset_path: Path, manifest_path: Path) -> bool:
+    def _verify_files(
+        self, artifact: CatalogArtifact, asset_path: Path, manifest_path: Path
+    ) -> bool:
         try:
             self._verify_manifest_hash(artifact, manifest_path)
             manifest = self._read_manifest(manifest_path, artifact)
@@ -260,7 +295,9 @@ class DataStore:
         metadata = self.metadata(identifier)
         path = self._local_path(metadata.get("asset_path"), identifier)
         if not path.is_file():
-            raise LexiconNotInstalledError(f"installed lexicon file is missing for {identifier}: {path}")
+            raise LexiconNotInstalledError(
+                f"installed lexicon file is missing for {identifier}: {path}"
+            )
         return path
 
     def verify(self, identifier: str) -> bool:
@@ -270,7 +307,9 @@ class DataStore:
             manifest = self._local_path(metadata.get("manifest_path"), identifier)
             if not asset.is_file() or not manifest.is_file():
                 return False
-            if _sha256(asset) != metadata.get("asset_sha256") or _sha256(manifest) != metadata.get("manifest_sha256"):
+            if _sha256(asset) != metadata.get("asset_sha256") or _sha256(manifest) != metadata.get(
+                "manifest_sha256"
+            ):
                 return False
             with g2lex.open(asset) as lexicon:
                 len(lexicon)

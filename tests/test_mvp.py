@@ -17,7 +17,9 @@ def _sha(path: Path) -> str:
 
 
 def _write_json(path: Path, value: object) -> None:
-    path.write_text(json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    path.write_text(
+        json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
 
 
 def _fixture_catalog(tmp_path: Path) -> Path:
@@ -32,14 +34,28 @@ def _fixture_catalog(tmp_path: Path) -> Path:
         encoding="utf-8",
     )
     de_asset = release / "de.g2lex"
-    g2lex.pack_file(source, de_asset, input_format="jsonl", source_id="test-de", metadata={"pronunciation_alphabet": "ipa"})
+    g2lex.pack_file(
+        source,
+        de_asset,
+        input_format="jsonl",
+        source_id="test-de",
+        metadata={"pronunciation_alphabet": "ipa"},
+    )
     de_manifest = release / "de.manifest.json"
     _write_json(de_manifest, {"id": "de-de:demo", "asset_sha256": _sha(de_asset)})
 
     en_source = tmp_path / "en.dict"
-    en_source.write_text("hello  HH AH0 L OW1\nworld  W ER1 L D\nread  R IY1 D\nread(2)  R EH1 D\n", encoding="utf-8")
+    en_source.write_text(
+        "hello  HH AH0 L OW1\nworld  W ER1 L D\nread  R IY1 D\nread(2)  R EH1 D\n", encoding="utf-8"
+    )
     en_asset = release / "en.g2lex"
-    g2lex.pack_file(en_source, en_asset, input_format="cmudict", source_id="test-en", metadata={"pronunciation_alphabet": "arpabet"})
+    g2lex.pack_file(
+        en_source,
+        en_asset,
+        input_format="cmudict",
+        source_id="test-en",
+        metadata={"pronunciation_alphabet": "arpabet"},
+    )
     en_manifest = release / "en.manifest.json"
     _write_json(en_manifest, {"id": "en-us:demo-cmu", "asset_sha256": _sha(en_asset)})
 
@@ -59,7 +75,11 @@ def _fixture_catalog(tmp_path: Path) -> Path:
                 "data_version": "test-1",
                 "release_tag": "data-test-1",
                 "source": {"provider": "test", "revision": "1", "license_expression": "CC0-1.0"},
-                "manifest": {"name": manifest.name, "url": manifest.as_uri(), "sha256": _sha(manifest)},
+                "manifest": {
+                    "name": manifest.name,
+                    "url": manifest.as_uri(),
+                    "sha256": _sha(manifest),
+                },
                 "asset": {
                     "name": asset.name,
                     "url": asset.as_uri(),
@@ -73,7 +93,10 @@ def _fixture_catalog(tmp_path: Path) -> Path:
             }
         )
     catalog = tmp_path / "catalog.json"
-    _write_json(catalog, {"catalog_version": 1, "runtime_contract": "g2lex-data.catalog.v1", "artifacts": artifacts})
+    _write_json(
+        catalog,
+        {"catalog_version": 1, "runtime_contract": "g2lex-data.catalog.v1", "artifacts": artifacts},
+    )
     return catalog
 
 
@@ -137,7 +160,9 @@ class _FakeFallback:
 
 def test_optional_fallback_is_generic_and_explicit(tmp_path: Path) -> None:
     store = _installed_store(tmp_path)
-    with Phonemizer("de-DE", lexicons=["de-de:demo"], store=store, fallback=_FakeFallback()) as engine:
+    with Phonemizer(
+        "de-DE", lexicons=["de-de:demo"], store=store, fallback=_FakeFallback()
+    ) as engine:
         token = engine.lookup("Quux")
         assert token.source == "fallback"
         assert token.pronunciation == "fəˈbæk"
