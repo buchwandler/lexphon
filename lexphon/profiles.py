@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import unicodedata
 from dataclasses import dataclass
 from importlib.resources import files
 
@@ -9,24 +10,51 @@ except ModuleNotFoundError:  # pragma: no cover
     import tomli as tomllib  # type: ignore[no-redef]
 
 
+_APOSTROPHE_MAP = str.maketrans({
+    "‘": "'",
+    "’": "'",
+    "‛": "'",
+    "＇": "'",
+    "`": "'",
+    "´": "'",
+})
+
+
 @dataclass(frozen=True, slots=True)
 class LanguageProfile:
     language: str
     aliases: tuple[str, ...]
     default_lexicons: tuple[str, ...]
     case_candidates: tuple[str, ...]
+    unicode_normalization: str = "NFC"
+    apostrophe_normalization: str = "none"
+
+    def _normalize(self, value: str) -> str:
+        if self.unicode_normalization.casefold() == "none":
+            normalized = value
+        else:
+            normalized = unicodedata.normalize(self.unicode_normalization.upper(), value)
+        if self.apostrophe_normalization.casefold() == "ascii":
+            normalized = normalized.translate(_APOSTROPHE_MAP)
+        return normalized
 
     def candidates(self, token: str) -> tuple[str, ...]:
+        token = self._normalize(token)
         values: list[str] = []
         for policy in self.case_candidates:
             if policy == "exact":
                 candidate = token
             elif policy == "lower":
                 candidate = token.lower()
+            elif policy == "casefold":
+                candidate = token.casefold()
             elif policy == "title":
-                candidate = token[:1].upper() + token[1:].lower() if token else token
+                candidate = token.title()
+            elif policy == "normalized":
+                candidate = token
             else:
                 continue
+            candidate = self._normalize(candidate)
             if candidate not in values:
                 values.append(candidate)
         return tuple(values)
@@ -47,6 +75,8 @@ class ProfileRegistry:
                     aliases=tuple(values.get("aliases", ())),
                     default_lexicons=tuple(values.get("default_lexicons", ())),
                     case_candidates=tuple(values.get("case_candidates", ("exact", "lower"))),
+                    unicode_normalization=str(values.get("unicode_normalization", "NFC")),
+                    apostrophe_normalization=str(values.get("apostrophe_normalization", "none")),
                 )
             )
         return tuple(result)
@@ -57,4 +87,11 @@ class ProfileRegistry:
             names = (profile.language, *profile.aliases)
             if key in {name.casefold().replace("_", "-") for name in names}:
                 return profile
-        return LanguageProfile(language=language, aliases=(), default_lexicons=(), case_candidates=("exact", "lower", "title"))
+        return LanguageProfile(
+            language=language,
+            aliases=(),
+            default_lexicons=(),
+            case_candidates=("exact", "lower", "title"),
+            unicode_normalization="NFC",
+            apostrophe_normalization="none",
+        )

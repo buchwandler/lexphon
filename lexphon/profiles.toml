@@ -2,23 +2,33 @@
 aliases = ["de", "de-de"]
 default_lexicons = ["de-de:gold"]
 case_candidates = ["exact", "lower", "title"]
+unicode_normalization = "NFC"
+apostrophe_normalization = "ascii"
 
 [profile."en-US"]
 aliases = ["en", "en-us", "en_US"]
 default_lexicons = ["en-us:gold"]
 case_candidates = ["exact", "lower", "title"]
+unicode_normalization = "NFC"
+apostrophe_normalization = "ascii"
 
 [profile."en-GB"]
 aliases = ["en-gb", "en_GB"]
 default_lexicons = ["en-gb:gold"]
 case_candidates = ["exact", "lower", "title"]
+unicode_normalization = "NFC"
+apostrophe_normalization = "ascii"
 
 [profile."fr-FR"]
 aliases = ["fr", "fr-fr"]
 default_lexicons = ["fr-fr:gold"]
 case_candidates = ["exact", "lower", "title"]
+unicode_normalization = "NFC"
+apostrophe_normalization = "ascii"
 
 [profile."sv-SE"]
 aliases = ["sv", "sv-se"]
 default_lexicons = ["sv-se:nst"]
 case_candidates = ["exact", "lower", "title"]
+unicode_normalization = "NFC"
+apostrophe_normalization = "ascii"

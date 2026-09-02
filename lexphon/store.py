@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import shutil
 import tempfile
 import urllib.request
@@ -11,8 +12,10 @@ from typing import Any
 
 import g2lex
 
-from .catalog import CatalogArtifact
-from .errors import LexiconNotInstalledError, LexphonError
+from .catalog import _ID_RE, CatalogArtifact
+from .errors import DataIntegrityError, LexiconNotInstalledError
+
+_DATA_VERSION_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 
 
 def default_data_home() -> Path:
@@ -35,13 +38,15 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def _safe_id(identifier: str) -> str:
-    return identifier.replace(":", "__").replace("/", "__")
+def _validate_data_version(value: str) -> str:
+    if not _DATA_VERSION_RE.fullmatch(value):
+        raise DataIntegrityError(f"invalid data version: {value!r}")
+    return value
 
 
 def _download(url: str, target: Path) -> None:
     target.parent.mkdir(parents=True, exist_ok=True)
-    with urllib.request.urlopen(url, timeout=60) as response, target.open("wb") as output:  # noqa: S310
+    with urllib.request.urlopen(url, timeout=60) as response, target.open("wb") as output:
         shutil.copyfileobj(response, output)
 
 
@@ -49,84 +54,194 @@ class DataStore:
     """Local immutable asset store. Downloads occur only through explicit install()."""
 
     def __init__(self, root: str | Path | None = None):
-        self.root = Path(root).expanduser() if root is not None else default_data_home()
+        self.root = (Path(root).expanduser() if root is not None else default_data_home()).resolve()
         self.assets_root = self.root / "assets"
         self.index_path = self.root / "installed.json"
 
     def _read_index(self) -> dict[str, Any]:
         if not self.index_path.is_file():
             return {"schema_version": 1, "artifacts": {}}
-        value = json.loads(self.index_path.read_text(encoding="utf-8"))
-        if not isinstance(value, dict) or not isinstance(value.get("artifacts"), dict):
-            raise LexphonError(f"invalid Lexphon store index: {self.index_path}")
+        try:
+            value = json.loads(self.index_path.read_text(encoding="utf-8"))
+        except Exception as exc:
+            raise DataIntegrityError(f"invalid Lexphon store index {self.index_path}: {exc}") from exc
+        if not isinstance(value, dict) or value.get("schema_version", 1) != 1:
+            raise DataIntegrityError(f"invalid Lexphon store index: {self.index_path}")
+        artifacts = value.get("artifacts")
+        if not isinstance(artifacts, dict):
+            raise DataIntegrityError(f"invalid Lexphon store index: {self.index_path}")
         return value
 
     def _write_index(self, value: dict[str, Any]) -> None:
         self.root.mkdir(parents=True, exist_ok=True)
-        temp = self.index_path.with_suffix(".tmp")
-        temp.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-        os.replace(temp, self.index_path)
+        temp = self.index_path.with_name(f".{self.index_path.name}.{os.getpid()}.tmp")
+        try:
+            temp.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+            with temp.open("rb") as handle:
+                os.fsync(handle.fileno())
+            os.replace(temp, self.index_path)
+        finally:
+            temp.unlink(missing_ok=True)
+
+    @staticmethod
+    def _safe_asset_dir(identifier: str, data_version: str) -> tuple[str, str]:
+        if not _ID_RE.fullmatch(identifier):
+            raise DataIntegrityError(f"invalid logical lexicon ID: {identifier!r}")
+        return identifier.replace(":", "__"), _validate_data_version(data_version)
+
+    def _local_path(self, relative: object, identifier: str) -> Path:
+        if not isinstance(relative, str) or not relative:
+            raise DataIntegrityError(f"invalid local path for installed lexicon {identifier}")
+        path = (self.root / relative).resolve()
+        try:
+            path.relative_to(self.root)
+        except ValueError as exc:
+            raise DataIntegrityError(f"installed path escapes data root for {identifier}") from exc
+        return path
 
     def install(self, artifact: CatalogArtifact) -> Path:
-        if artifact.kind != "pronunciation" and artifact.kind != "membership":
-            raise LexphonError(f"unsupported artifact kind: {artifact.kind}")
-        version_dir = self.assets_root / _safe_id(artifact.id) / artifact.data_version
+        _validate_data_version(artifact.data_version)
+        safe_id, data_version = self._safe_asset_dir(artifact.id, artifact.data_version)
+        version_dir = self.assets_root / safe_id / data_version
         asset_name = str(artifact.asset["name"])
         manifest_name = str(artifact.manifest["name"])
         asset_path = version_dir / asset_name
         manifest_path = version_dir / manifest_name
 
-        if asset_path.is_file() and manifest_path.is_file():
-            if self._verify_files(artifact, asset_path, manifest_path):
-                self._register(artifact, asset_path, manifest_path)
-                return asset_path
-
-        version_dir.parent.mkdir(parents=True, exist_ok=True)
-        stage: Path | None = Path(tempfile.mkdtemp(prefix=".install-", dir=version_dir.parent))
-        try:
-            assert stage is not None
-            staged_asset = stage / asset_name
-            staged_manifest = stage / manifest_name
-            _download(str(artifact.asset["url"]), staged_asset)
-            _download(str(artifact.manifest["url"]), staged_manifest)
-            if not self._verify_files(artifact, staged_asset, staged_manifest):
-                raise LexphonError(f"download verification failed for {artifact.id}")
-            shutil.rmtree(version_dir, ignore_errors=True)
-            os.replace(stage, version_dir)
-            stage = None
+        if asset_path.is_file() and manifest_path.is_file() and self._verify_files(artifact, asset_path, manifest_path):
             self._register(artifact, asset_path, manifest_path)
             return asset_path
+
+        self.assets_root.mkdir(parents=True, exist_ok=True)
+        version_dir.parent.mkdir(parents=True, exist_ok=True)
+        stage = Path(tempfile.mkdtemp(prefix=".install-", dir=self.assets_root))
+        try:
+            staged_manifest = stage / manifest_name
+            staged_asset = stage / asset_name
+            _download(str(artifact.manifest["url"]), staged_manifest)
+            self._verify_manifest_hash(artifact, staged_manifest)
+            manifest = self._read_manifest(staged_manifest, artifact)
+            _download(str(artifact.asset["url"]), staged_asset)
+            self._verify_asset(artifact, staged_asset)
+            self._verify_manifest_agreement(artifact, manifest)
+            self._verify_g2lex(artifact, staged_asset)
+            if version_dir.exists():
+                shutil.rmtree(version_dir)
+            os.replace(stage, version_dir)
+            stage = Path()
+            self._register(artifact, asset_path, manifest_path)
+            return asset_path
+        except DataIntegrityError:
+            raise
+        except Exception as exc:
+            raise DataIntegrityError(f"unable to install lexicon {artifact.id}: {exc}") from exc
         finally:
-            if stage is not None and stage.exists():
+            if stage != Path() and stage.exists():
                 shutil.rmtree(stage, ignore_errors=True)
 
-    def _verify_files(self, artifact: CatalogArtifact, asset_path: Path, manifest_path: Path) -> bool:
+    def _verify_manifest_hash(self, artifact: CatalogArtifact, manifest_path: Path) -> None:
+        expected = artifact.manifest["sha256"]
+        if _sha256(manifest_path) != expected:
+            raise DataIntegrityError(f"manifest SHA-256 mismatch for {artifact.id}")
+        expected_size = artifact.manifest.get("size")
+        if expected_size is not None and manifest_path.stat().st_size != expected_size:
+            raise DataIntegrityError(f"manifest size mismatch for {artifact.id}")
+
+    def _verify_asset(self, artifact: CatalogArtifact, asset_path: Path) -> None:
         if _sha256(asset_path) != artifact.asset["sha256"]:
-            return False
-        if _sha256(manifest_path) != artifact.manifest["sha256"]:
-            return False
+            raise DataIntegrityError(f"asset SHA-256 mismatch for {artifact.id}")
+        if asset_path.stat().st_size != artifact.asset["size"]:
+            raise DataIntegrityError(f"asset size mismatch for {artifact.id}")
+
+    def _read_manifest(self, manifest_path: Path, artifact: CatalogArtifact) -> dict[str, Any]:
+        try:
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        except Exception as exc:
+            raise DataIntegrityError(f"invalid manifest for {artifact.id}: {exc}") from exc
+        if not isinstance(manifest, dict):
+            raise DataIntegrityError(f"manifest for {artifact.id} must be an object")
+        if manifest.get("id") != artifact.id:
+            raise DataIntegrityError(f"manifest id does not match catalog for {artifact.id}")
+        legacy_hash = manifest.get("asset_sha256")
+        if legacy_hash is not None and legacy_hash != artifact.asset["sha256"]:
+            raise DataIntegrityError(f"manifest asset hash does not match catalog for {artifact.id}")
+        if "contract_version" in manifest:
+            required = ("contract_version", "manifest_version", "data_version", "kind", "language", "name", "phoneme_encoding")
+            if any(key not in manifest for key in required):
+                raise DataIntegrityError(f"manifest is missing required metadata for {artifact.id}")
+            if manifest["contract_version"] != 1 or manifest["manifest_version"] != 1:
+                raise DataIntegrityError(f"unsupported manifest contract for {artifact.id}")
+        return manifest
+
+    def _verify_manifest_agreement(self, artifact: CatalogArtifact, manifest: dict[str, Any]) -> None:
+        for key in ("id", "data_version", "kind", "phoneme_encoding"):
+            if key in manifest and manifest[key] != getattr(artifact, key):
+                raise DataIntegrityError(f"catalog and manifest {key} disagree for {artifact.id}")
+        manifest_language = manifest.get("language")
+        if manifest_language is not None and manifest_language.casefold().replace("_", "-") != artifact.language.casefold().replace("_", "-"):
+            raise DataIntegrityError(f"catalog and manifest language disagree for {artifact.id}")
+        manifest_name = manifest.get("name")
+        if manifest_name is not None and manifest_name != artifact.name:
+            raise DataIntegrityError(f"catalog and manifest name disagree for {artifact.id}")
+        asset = manifest.get("asset")
+        if isinstance(asset, dict):
+            expected = {"sha256": artifact.asset["sha256"], "size": artifact.asset["size"]}
+            for key, value in expected.items():
+                if key in asset and asset[key] != value:
+                    raise DataIntegrityError(f"catalog and manifest asset {key} disagree for {artifact.id}")
+            logical_hash = artifact.asset.get("logical_sha256")
+            if logical_hash and asset.get("logical_sha256") not in {None, logical_hash}:
+                raise DataIntegrityError(f"catalog and manifest logical hash disagree for {artifact.id}")
+        for key in ("asset_sha256", "logical_sha256"):
+            if key in manifest:
+                expected = artifact.asset.get("sha256" if key == "asset_sha256" else key)
+                if expected is not None and manifest[key] != expected:
+                    raise DataIntegrityError(f"catalog and manifest {key} disagree for {artifact.id}")
+
+    def _verify_g2lex(self, artifact: CatalogArtifact, asset_path: Path) -> None:
         try:
             with g2lex.open(asset_path) as lexicon:
                 len(lexicon)
-        except Exception:
+                source_encoding = lexicon.metadata.get("source", {}).get("pronunciation_alphabet")
+                if source_encoding is not None and source_encoding.casefold() != artifact.phoneme_encoding:
+                    raise DataIntegrityError(f"G2Lex encoding does not match catalog for {artifact.id}")
+        except DataIntegrityError:
+            raise
+        except Exception as exc:
+            raise DataIntegrityError(f"G2Lex asset cannot be opened for {artifact.id}: {exc}") from exc
+
+    def _verify_files(self, artifact: CatalogArtifact, asset_path: Path, manifest_path: Path) -> bool:
+        try:
+            self._verify_manifest_hash(artifact, manifest_path)
+            manifest = self._read_manifest(manifest_path, artifact)
+            self._verify_asset(artifact, asset_path)
+            self._verify_manifest_agreement(artifact, manifest)
+            self._verify_g2lex(artifact, asset_path)
+        except (DataIntegrityError, OSError):
             return False
         return True
 
     def _register(self, artifact: CatalogArtifact, asset_path: Path, manifest_path: Path) -> None:
         index = self._read_index()
         artifacts = index["artifacts"]
-        artifacts[artifact.id] = {
+        metadata = {
             "id": artifact.id,
             "language": artifact.language,
             "name": artifact.name,
+            "display_name": artifact.display_name,
             "kind": artifact.kind,
             "phoneme_encoding": artifact.phoneme_encoding,
             "data_version": artifact.data_version,
-            "asset_path": str(asset_path.relative_to(self.root)),
+            "release_tag": artifact.release_tag,
             "manifest_path": str(manifest_path.relative_to(self.root)),
+            "asset_path": str(asset_path.relative_to(self.root)),
             "asset_sha256": artifact.asset["sha256"],
+            "asset_size": artifact.asset["size"],
             "manifest_sha256": artifact.manifest["sha256"],
         }
+        if artifact.asset.get("logical_sha256"):
+            metadata["logical_sha256"] = artifact.asset["logical_sha256"]
+        artifacts[artifact.id] = metadata
         self._write_index(index)
 
     def installed(self) -> tuple[dict[str, Any], ...]:
@@ -143,23 +258,23 @@ class DataStore:
 
     def path(self, identifier: str) -> Path:
         metadata = self.metadata(identifier)
-        path = self.root / metadata["asset_path"]
+        path = self._local_path(metadata.get("asset_path"), identifier)
         if not path.is_file():
             raise LexiconNotInstalledError(f"installed lexicon file is missing for {identifier}: {path}")
         return path
 
     def verify(self, identifier: str) -> bool:
         metadata = self.metadata(identifier)
-        asset = self.root / metadata["asset_path"]
-        manifest = self.root / metadata["manifest_path"]
-        if not asset.is_file() or not manifest.is_file():
-            return False
-        if _sha256(asset) != metadata["asset_sha256"] or _sha256(manifest) != metadata["manifest_sha256"]:
-            return False
         try:
+            asset = self._local_path(metadata.get("asset_path"), identifier)
+            manifest = self._local_path(metadata.get("manifest_path"), identifier)
+            if not asset.is_file() or not manifest.is_file():
+                return False
+            if _sha256(asset) != metadata.get("asset_sha256") or _sha256(manifest) != metadata.get("manifest_sha256"):
+                return False
             with g2lex.open(asset) as lexicon:
                 len(lexicon)
-        except Exception:
+        except (DataIntegrityError, OSError, ValueError, g2lex.LexiconFormatError):
             return False
         return True
 
@@ -168,6 +283,6 @@ class DataStore:
         metadata = index["artifacts"].pop(identifier, None)
         if metadata is None:
             return
-        asset_path = self.root / metadata["asset_path"]
+        asset_path = self._local_path(metadata.get("asset_path"), identifier)
         shutil.rmtree(asset_path.parent, ignore_errors=True)
         self._write_index(index)

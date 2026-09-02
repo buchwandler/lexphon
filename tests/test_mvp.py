@@ -10,7 +10,6 @@ import pytest
 from lexphon import DataStore, LexiconNotInstalledError, Phonemizer, __version__
 from lexphon.alphabets import arpabet_to_ipa
 from lexphon.catalog import load_catalog
-from lexphon.models import PronunciationToken
 
 
 def _sha(path: Path) -> str:
@@ -26,14 +25,10 @@ def _fixture_catalog(tmp_path: Path) -> Path:
     release.mkdir()
     source = tmp_path / "de.jsonl"
     source.write_text(
-        '\n'.join(
-            [
-                '{"word":"die","kind":"tagged","items":[["DEFAULT","diː"],["DET","diː"]]}',
-                '{"word":"Leute","kind":"scalar","value":"ˈlɔʏtə"}',
-                '{"word":"kommen","kind":"scalar","value":"ˈkɔmən"}',
-                '{"word":"Haus","kind":"scalar","value":"haʊ̯s"}',
-            ]
-        ) + '\n',
+        '{"word":"die","kind":"tagged","items":[["DEFAULT","diː"],["DET","diː"]]}\n'
+        '{"word":"Leute","kind":"scalar","value":"ˈlɔʏtə"}\n'
+        '{"word":"kommen","kind":"scalar","value":"ˈkɔmən"}\n'
+        '{"word":"Haus","kind":"scalar","value":"haʊ̯s"}\n',
         encoding="utf-8",
     )
     de_asset = release / "de.g2lex"

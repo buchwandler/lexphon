@@ -1,0 +1,18 @@
+schema_version = 3
+
+[project]
+uuid = "1aa1a604-2030-4ea1-8b69-ed6156710160"
+name = "lexphon"
+
+[ledgers.taskledger.mounts.data]
+storage = "external"
+root = "../ledger"
+
+[ledgers.taskledger.mounts.runtime]
+storage = "user-data"
+
+[ledgers.taskledger.mounts.logs]
+storage = "user-data"
+
+[ledgers.taskledger.mounts.indexes]
+storage = "cache"

@@ -11,5 +11,7 @@ jobs:
         with:
           python-version: "3.13"
       - run: python -m pip install -e ".[dev]"
+      - run: ruff check lexphon tests/test_production.py
+      - run: python -c "import lexphon; from importlib.resources import files; assert files('lexphon').joinpath('profiles.toml').is_file(); assert files('lexphon').joinpath('py.typed').is_file()"
       - run: pytest
       - run: python -m build

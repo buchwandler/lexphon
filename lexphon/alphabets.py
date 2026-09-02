@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import unicodedata
 
 from .errors import UnsupportedAlphabetError
 
@@ -19,13 +20,9 @@ _ARPA_TOKEN = re.compile(r"^(?P<phoneme>[A-Z]+)(?P<stress>[012])?$")
 
 
 def arpabet_to_ipa(value: str) -> str:
-    """Convert CMU-style ARPABET to broad IPA.
-
-    Stress is placed at the start of the approximate syllable onset: before the
-    word for the first vowel, or before the consonant sequence following the
-    previous vowel. This is deliberately a pronunciation normalization layer,
-    not a full English syllabifier.
-    """
+    """Convert CMU-style ARPABET to deterministic broad IPA."""
+    if not isinstance(value, str) or not value.strip():
+        raise UnsupportedAlphabetError("ARPABET pronunciation must contain phone tokens")
     segments: list[str] = []
     vowel_indices: list[int] = []
     stressed: list[tuple[int, str]] = []
@@ -41,11 +38,11 @@ def arpabet_to_ipa(value: str) -> str:
                 ipa = "ə"
             elif symbol == "ER" and stress == "0":
                 ipa = "ɚ"
-            index = len(segments)
-            segments.append(ipa)
+            vowel_ordinal = len(vowel_indices)
             if stress in {"1", "2"}:
-                stressed.append((len(vowel_indices), "ˈ" if stress == "1" else "ˌ"))
-            vowel_indices.append(index)
+                stressed.append((vowel_ordinal, "ˈ" if stress == "1" else "ˌ"))
+            vowel_indices.append(len(segments))
+            segments.append(ipa)
         elif symbol in _ARPA_CONSONANTS:
             if stress is not None:
                 raise UnsupportedAlphabetError(f"stress on ARPABET consonant: {raw!r}")
@@ -63,13 +60,15 @@ def arpabet_to_ipa(value: str) -> str:
         output.extend(insertions.get(index, ()))
         output.append(segment)
     output.extend(insertions.get(len(segments), ()))
-    return "".join(output)
+    return unicodedata.normalize("NFC", "".join(output))
 
 
 def to_ipa(value: str, encoding: str) -> str:
+    if not isinstance(value, str) or not value:
+        raise UnsupportedAlphabetError("pronunciation must be a non-empty string")
     key = encoding.casefold().replace("-", "")
     if key in {"ipa", "unicodeipa"}:
-        return value
+        return unicodedata.normalize("NFC", value)
     if key in {"arpabet", "cmu", "cmudict"}:
         return arpabet_to_ipa(value)
     raise UnsupportedAlphabetError(f"unsupported pronunciation encoding: {encoding!r}")

@@ -7,6 +7,7 @@ from typing import Any
 import g2lex
 
 from .alphabets import to_ipa
+from .errors import LexiconNotUsableError, UnsupportedAlphabetError
 from .fallback import EspeakFallback, Fallback
 from .models import PhonemizationResult, PronunciationToken
 from .profiles import LanguageProfile, ProfileRegistry
@@ -22,11 +23,7 @@ class _Layer:
 
 
 class Phonemizer:
-    """Generic lexicon-first phonemizer returning normalized IPA.
-
-    Runtime lookup never downloads data. All G2Lex assets must already be installed
-    through DataStore or the `lexphon data install` CLI.
-    """
+    """Generic lexicon-first phonemizer returning normalized IPA."""
 
     def __init__(
         self,
@@ -42,17 +39,34 @@ class Phonemizer:
         self.language = self.profile.language
         identifiers = tuple(lexicons) if lexicons is not None else self.profile.default_lexicons
         self.layers: list[_Layer] = []
-        for identifier in identifiers:
-            metadata = self.store.metadata(identifier)
-            if metadata.get("kind") != "pronunciation":
-                raise ValueError(f"{identifier} is not a pronunciation lexicon")
-            self.layers.append(
-                _Layer(
-                    identifier=identifier,
-                    encoding=str(metadata["phoneme_encoding"]),
-                    lexicon=g2lex.open(self.store.path(identifier)),
+        try:
+            for identifier in identifiers:
+                metadata = self.store.metadata(identifier)
+                kind = metadata.get("kind")
+                if kind != "pronunciation":
+                    raise LexiconNotUsableError(
+                        f"lexicon {identifier!r} has kind {kind!r}; only pronunciation lexica can be layers"
+                    )
+                encoding = metadata.get("phoneme_encoding")
+                if not isinstance(encoding, str) or encoding.casefold() == "none":
+                    raise LexiconNotUsableError(
+                        f"lexicon {identifier!r} has no pronunciation alphabet and cannot be a layer"
+                    )
+                if encoding.casefold().replace("-", "") not in {"ipa", "unicodeipa", "arpabet", "cmu", "cmudict"}:
+                    raise UnsupportedAlphabetError(
+                        f"unsupported pronunciation encoding {encoding!r} for {identifier!r}"
+                    )
+                self.layers.append(
+                    _Layer(
+                        identifier=identifier,
+                        encoding=encoding,
+                        lexicon=g2lex.open(self.store.path(identifier)),
+                    )
                 )
-            )
+        except Exception:
+            for layer in self.layers:
+                layer.lexicon.close()
+            raise
         if fallback == "espeak":
             self.fallback: Fallback | None = EspeakFallback()
         elif fallback is None:
@@ -108,12 +122,7 @@ class Phonemizer:
         for token, punctuation in tokenize(text):
             if punctuation:
                 tokens.append(
-                    PronunciationToken(
-                        text=token,
-                        pronunciation=None,
-                        source="literal",
-                        punctuation=True,
-                    )
+                    PronunciationToken(text=token, pronunciation=None, source="literal", punctuation=True)
                 )
             else:
                 tokens.append(self.lookup(token, tag=tag))
@@ -136,7 +145,7 @@ class Phonemizer:
         for layer in self.layers:
             layer.lexicon.close()
 
-    def __enter__(self) -> "Phonemizer":
+    def __enter__(self):
         self._ensure_open()
         return self
 

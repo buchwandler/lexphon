@@ -24,6 +24,8 @@ def _data_main(argv: list[str]) -> int:
     p_verify.add_argument("id", nargs="*")
     p_remove = sub.add_parser("remove")
     p_remove.add_argument("id", nargs="+")
+    p_info = sub.add_parser("info")
+    p_info.add_argument("id", nargs="+")
     p_available = sub.add_parser("available")
     p_available.add_argument("language", nargs="?")
     args = parser.parse_args(argv)
@@ -37,6 +39,9 @@ def _data_main(argv: list[str]) -> int:
     elif args.command == "list":
         for item in store.installed():
             print(f"{item['id']}\t{item['data_version']}\t{item['phoneme_encoding']}")
+    elif args.command == "info":
+        for identifier in args.id:
+            print(json.dumps(store.metadata(identifier), ensure_ascii=False, sort_keys=True))
     elif args.command == "verify":
         ids = args.id or [item["id"] for item in store.installed()]
         failed = False
@@ -96,8 +101,11 @@ def _phonemize_main(argv: list[str]) -> int:
                         "tokens": [
                             {
                                 "text": token.text,
+                                "original_token": token.text,
                                 "pronunciation": token.pronunciation,
                                 "source": token.source,
+                                "alphabet": token.alphabet,
+                                "known": token.known,
                                 "lexicon_id": token.lexicon_id,
                                 "matched_key": token.matched_key,
                                 "source_encoding": token.source_encoding,

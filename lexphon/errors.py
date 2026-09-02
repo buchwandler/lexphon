@@ -6,8 +6,16 @@ class CatalogError(LexphonError):
     """The remote or local data catalog is invalid."""
 
 
+class DataIntegrityError(LexphonError):
+    """An installed or downloaded data artifact violates its contract."""
+
+
 class LexiconNotInstalledError(LexphonError):
     """A requested G2Lex asset is not present in the local data store."""
+
+
+class LexiconNotUsableError(LexphonError):
+    """An installed asset cannot be used as a pronunciation layer."""
 
 
 class UnsupportedAlphabetError(LexphonError):

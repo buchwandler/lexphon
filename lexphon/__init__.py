@@ -2,11 +2,12 @@
 from __future__ import annotations
 
 from ._version import __version__
-
 from .engine import Phonemizer
 from .errors import (
     CatalogError,
+    DataIntegrityError,
     LexiconNotInstalledError,
+    LexiconNotUsableError,
     LexphonError,
     UnknownWordError,
     UnsupportedAlphabetError,
@@ -16,8 +17,10 @@ from .store import DataStore
 
 __all__ = [
     "CatalogError",
+    "DataIntegrityError",
     "DataStore",
     "LexiconNotInstalledError",
+    "LexiconNotUsableError",
     "LexphonError",
     "PhonemizationResult",
     "Phonemizer",
