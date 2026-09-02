@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lexphon"
+description = "Lexicon-driven phonemizer and CLI built on G2Lex."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "Apache-2.0"
+authors = [{name = "Holger Nahrstaedt"}]
+keywords = ["g2p", "phonemizer", "pronunciation", "ipa", "g2lex", "tts"]
+dynamic = ["version"]
+dependencies = ["g2lex>=0.1.8,<0.2"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.16", "build>=1", "tomli>=2; python_version < '3.11'"]
+
+[project.scripts]
+lexphon = "lexphon.cli:main"
+
+[project.urls]
+Repository = "https://github.com/buchwandler/lexphon"
+Issues = "https://github.com/buchwandler/lexphon/issues"
+Data = "https://github.com/buchwandler/g2lex-data"
+
+# Intentionally no src/ layer. The import package lives at ./lexphon.
+[tool.setuptools.dynamic]
+version = {attr = "lexphon._version.__version__"}
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["lexphon*"]
+exclude = ["tests*"]
+
+[tool.setuptools.package-data]
+lexphon = ["profiles.toml", "py.typed"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+pythonpath = ["."]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"

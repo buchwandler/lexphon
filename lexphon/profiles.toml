@@ -1,0 +1,24 @@
+[profile."de-DE"]
+aliases = ["de", "de-de"]
+default_lexicons = ["de-de:gold"]
+case_candidates = ["exact", "lower", "title"]
+
+[profile."en-US"]
+aliases = ["en", "en-us", "en_US"]
+default_lexicons = ["en-us:gold"]
+case_candidates = ["exact", "lower", "title"]
+
+[profile."en-GB"]
+aliases = ["en-gb", "en_GB"]
+default_lexicons = ["en-gb:gold"]
+case_candidates = ["exact", "lower", "title"]
+
+[profile."fr-FR"]
+aliases = ["fr", "fr-fr"]
+default_lexicons = ["fr-fr:gold"]
+case_candidates = ["exact", "lower", "title"]
+
+[profile."sv-SE"]
+aliases = ["sv", "sv-se"]
+default_lexicons = ["sv-se:nst"]
+case_candidates = ["exact", "lower", "title"]
