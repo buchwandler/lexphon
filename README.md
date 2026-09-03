@@ -1,3 +1,8 @@
+[![PyPI - Version](https://img.shields.io/pypi/v/lexphon)](https://pypi.org/project/lexphon/)
+![PyPI - Python Version](https://img.shields.io/pypi/pyversions/lexphon)
+![PyPI - Downloads](https://img.shields.io/pypi/dm/lexphon)
+[![codecov](https://codecov.io/gh/buchwandler/lexphon/graph/badge.svg?token=7EteJ0dez8)](https://codecov.io/gh/buchwandler/lexphon)
+
 # Lexphon
 
 **Lexphon** is a generic, lexicon-driven phonemizer and CLI built on [G2Lex](https://github.com/buchwandler/g2lex). It consumes released pronunciation assets and returns normalized IPA without producing Kokoro phonemes.
