@@ -1,0 +1,199 @@
+schema_version: 1
+object_type: commit_audit_sheet
+versioning:
+  schema_version: 1
+  revision: 4
+release_version: v0.1.0
+git_base_ref: :root
+git_base_sha: 4b825dc642cb6eb9a060e54bf8d69288fbee4904
+git_head_ref: HEAD
+git_head_sha: a137b5db549d8497da3f136b8139609930bcb614
+git_range: :root..a137b5db549d8497da3f136b8139609930bcb614
+commit_count: 4
+rows:
+  - sha: 57912457b0c40ea0ca1d8a864153bf5075a29eea
+    source_ref: git:57912457b0c40ea0ca1d8a864153bf5075a29eea
+    short_sha: "5791245"
+    changed_paths: []
+    stats:
+      files_changed: 0
+      insertions: 0
+      deletions: 0
+    inspected: true
+    inspected_paths:
+      - .gitignore
+      - LICENSE
+      - README.md
+    observed_behavior:
+      The root commit establishes repository metadata and contributes
+      no product behavior to the release.
+    public_impact: none
+    decision: internal
+    evidence_subject: Initial commit
+    target_entry_id: entry-0001
+    notes: No release entry required for an empty product contribution.
+  - sha: c8033ed831cb3fca1a33f4f505b47369cd6c0235
+    source_ref: git:c8033ed831cb3fca1a33f4f505b47369cd6c0235
+    short_sha: c8033ed
+    changed_paths:
+      - .codecrate.toml
+      - .github/workflows/tests.yml
+      - .gitignore
+      - README.md
+      - docs/ARCHITECTURE.md
+      - docs/KOKOROG2P_INTEGRATION.md
+      - examples/kokorog2p_backend.py
+      - lexphon/__init__.py
+      - lexphon/__main__.py
+      - lexphon/_version.py
+      - lexphon/alphabets.py
+      - lexphon/catalog.py
+      - lexphon/cli.py
+      - lexphon/engine.py
+      - lexphon/errors.py
+      - lexphon/fallback.py
+      - lexphon/models.py
+      - lexphon/profiles.py
+      - lexphon/profiles.toml
+      - lexphon/py.typed
+      - lexphon/store.py
+      - lexphon/tokenizer.py
+      - pyproject.toml
+      - tests/test_mvp.py
+    stats:
+      files_changed: 0
+      insertions: 1341
+      deletions: 1
+    inspected: true
+    inspected_paths:
+      - README.md
+      - docs/ARCHITECTURE.md
+      - docs/KOKOROG2P_INTEGRATION.md
+      - examples/kokorog2p_backend.py
+      - lexphon/__init__.py
+      - lexphon/alphabets.py
+      - lexphon/catalog.py
+      - lexphon/cli.py
+      - lexphon/engine.py
+      - lexphon/errors.py
+      - lexphon/fallback.py
+      - lexphon/models.py
+      - lexphon/profiles.py
+      - lexphon/profiles.toml
+      - lexphon/store.py
+      - lexphon/tokenizer.py
+      - pyproject.toml
+      - tests/test_mvp.py
+    observed_behavior:
+      "Provides the initial Lexphon runtime: explicit local lexicon
+      installation, language profiles and layered lookup, IPA and ARPABET normalization,
+      token-level provenance, unknown-token handling, optional eSpeak fallback, a data
+      and phonemization CLI, and the Python integration boundary documented for downstream
+      adapters."
+    public_impact: public
+    decision: accepted
+    evidence_subject: "feat: initial release"
+    target_entry_key: initial-runtime
+    target_entry_id: entry-0002
+    notes:
+      Reviewed implementation, public documentation, example integration, and MVP
+      coverage.
+  - sha: 92b0bb1ae8dd71562cc0c4d5c9321841ef8cb0de
+    source_ref: git:92b0bb1ae8dd71562cc0c4d5c9321841ef8cb0de
+    short_sha: 92b0bb1
+    changed_paths:
+      - .github/workflows/tests.yml
+      - .ledger/ledger.toml
+      - .ledger/taskledger/.ledger-project.toml
+      - .ledger/taskledger/config.toml
+      - README.md
+      - docs/ARCHITECTURE.md
+      - docs/KOKOROG2P_INTEGRATION.md
+      - lexphon/__init__.py
+      - lexphon/alphabets.py
+      - lexphon/catalog.py
+      - lexphon/cli.py
+      - lexphon/engine.py
+      - lexphon/errors.py
+      - lexphon/profiles.py
+      - lexphon/profiles.toml
+      - lexphon/store.py
+      - tests/test_mvp.py
+      - tests/test_production.py
+    stats:
+      files_changed: 0
+      insertions: 649
+      deletions: 185
+    inspected: true
+    inspected_paths:
+      - README.md
+      - docs/ARCHITECTURE.md
+      - docs/KOKOROG2P_INTEGRATION.md
+      - lexphon/__init__.py
+      - lexphon/alphabets.py
+      - lexphon/catalog.py
+      - lexphon/cli.py
+      - lexphon/engine.py
+      - lexphon/errors.py
+      - lexphon/profiles.py
+      - lexphon/profiles.toml
+      - lexphon/store.py
+      - tests/test_mvp.py
+      - tests/test_production.py
+    observed_behavior:
+      Strengthens the runtime contract with validated catalog and manifest
+      metadata, hash and size checks, G2Lex compatibility checks, atomic asset activation,
+      production language and lexicon coverage, structured CLI output, and regression
+      tests for offline operation, variants, selectors, lifecycle, and failed installation.
+    public_impact: public
+    decision: accepted
+    evidence_subject: "feat: first working version"
+    target_entry_key: verified-data-lifecycle
+    target_entry_id: entry-0003
+    notes:
+      Reviewed final behavior in implementation, documentation, and production
+      regression coverage.
+  - sha: a137b5db549d8497da3f136b8139609930bcb614
+    source_ref: git:a137b5db549d8497da3f136b8139609930bcb614
+    short_sha: a137b5d
+    changed_paths:
+      - .gitignore
+      - .pre-commit-config.yaml
+      - lexphon/__init__.py
+      - lexphon/_version.py
+      - lexphon/alphabets.py
+      - lexphon/catalog.py
+      - lexphon/cli.py
+      - lexphon/engine.py
+      - lexphon/profiles.py
+      - lexphon/store.py
+      - tests/test_mvp.py
+      - tests/test_production.py
+    stats:
+      files_changed: 0
+      insertions: 407
+      deletions: 91
+    inspected: true
+    inspected_paths:
+      - .gitignore
+      - .pre-commit-config.yaml
+      - lexphon/__init__.py
+      - lexphon/_version.py
+      - lexphon/alphabets.py
+      - lexphon/catalog.py
+      - lexphon/cli.py
+      - lexphon/engine.py
+      - lexphon/profiles.py
+      - lexphon/store.py
+      - tests/test_mvp.py
+      - tests/test_production.py
+    observed_behavior:
+      Adds repository pre-commit checks and applies formatting-only
+      changes to runtime and test files without changing the documented product behavior.
+    public_impact: internal
+    decision: internal
+    evidence_subject: "chore: pre-commit"
+    target_entry_id: entry-0004
+    notes:
+      Tooling and formatting changes are retained for audit coverage but excluded
+      from public release notes.

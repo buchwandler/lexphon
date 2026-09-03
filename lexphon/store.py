@@ -91,6 +91,26 @@ class DataStore:
             raise DataIntegrityError(f"invalid logical lexicon ID: {identifier!r}")
         return identifier.replace(":", "__"), _validate_data_version(data_version)
 
+    @staticmethod
+    def _safe_filename(value: object, label: str) -> str:
+        if (
+            not isinstance(value, str)
+            or not value
+            or Path(value).name != value
+            or value in {".", ".."}
+        ):
+            raise DataIntegrityError(f"invalid {label} filename: {value!r}")
+        return value
+
+    def _version_dir(self, identifier: str, data_version: str) -> Path:
+        safe_id, safe_version = self._safe_asset_dir(identifier, data_version)
+        path = (self.assets_root / safe_id / safe_version).resolve()
+        try:
+            path.relative_to(self.root)
+        except ValueError as exc:
+            raise DataIntegrityError(f"asset path escapes data root for {identifier}") from exc
+        return path
+
     def _local_path(self, relative: object, identifier: str) -> Path:
         if not isinstance(relative, str) or not relative:
             raise DataIntegrityError(f"invalid local path for installed lexicon {identifier}")
@@ -102,22 +122,43 @@ class DataStore:
         return path
 
     def install(self, artifact: CatalogArtifact) -> Path:
-        _validate_data_version(artifact.data_version)
-        safe_id, data_version = self._safe_asset_dir(artifact.id, artifact.data_version)
-        version_dir = self.assets_root / safe_id / data_version
-        asset_name = str(artifact.asset["name"])
-        manifest_name = str(artifact.manifest["name"])
+        data_version = _validate_data_version(artifact.data_version)
+        version_dir = self._version_dir(artifact.id, data_version)
+        asset_name = self._safe_filename(artifact.asset.get("name"), "asset")
+        manifest_name = self._safe_filename(artifact.manifest.get("name"), "manifest")
         asset_path = version_dir / asset_name
         manifest_path = version_dir / manifest_name
-
-        if (
-            asset_path.is_file()
-            and manifest_path.is_file()
-            and self._verify_files(artifact, asset_path, manifest_path)
-        ):
-            self._register(artifact, asset_path, manifest_path)
-            return asset_path
-
+        index = self._read_index()
+        existing = index["artifacts"].get(artifact.id)
+        if isinstance(existing, dict) and existing.get("data_version") == data_version:
+            expected = {
+                "language": artifact.language,
+                "name": artifact.name,
+                "kind": artifact.kind,
+                "phoneme_encoding": artifact.phoneme_encoding,
+                "release_tag": artifact.release_tag,
+                "asset_sha256": artifact.asset["sha256"],
+                "asset_size": artifact.asset["size"],
+                "manifest_sha256": artifact.manifest["sha256"],
+            }
+            if artifact.asset.get("logical_sha256") is not None:
+                expected["logical_sha256"] = artifact.asset["logical_sha256"]
+            if any(key in existing and existing[key] != value for key, value in expected.items()):
+                raise DataIntegrityError(
+                    f"lexicon {artifact.id!r} data version {data_version!r} is immutable"
+                )
+        if version_dir.exists():
+            if (
+                version_dir.is_dir()
+                and asset_path.is_file()
+                and manifest_path.is_file()
+                and self._verify_files(artifact, asset_path, manifest_path)
+            ):
+                self._register(artifact, asset_path, manifest_path)
+                return asset_path
+            raise DataIntegrityError(
+                f"lexicon {artifact.id!r} data version {data_version!r} is immutable"
+            )
         self.assets_root.mkdir(parents=True, exist_ok=True)
         version_dir.parent.mkdir(parents=True, exist_ok=True)
         stage = Path(tempfile.mkdtemp(prefix=".install-", dir=self.assets_root))
@@ -131,8 +172,6 @@ class DataStore:
             self._verify_asset(artifact, staged_asset)
             self._verify_manifest_agreement(artifact, manifest)
             self._verify_g2lex(artifact, staged_asset)
-            if version_dir.exists():
-                shutil.rmtree(version_dir)
             os.replace(stage, version_dir)
             stage = Path()
             self._register(artifact, asset_path, manifest_path)

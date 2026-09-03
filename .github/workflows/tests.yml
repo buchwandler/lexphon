@@ -1,17 +1,80 @@
 name: tests
-on: [push, pull_request]
+
+on:
+  push:
+  pull_request:
+
 jobs:
   test:
-    runs-on: ubuntu-latest
+    name: test / ${{ matrix.os }} / Python ${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python-version: "3.10"
+          - os: ubuntu-latest
+            python-version: "3.11"
+          - os: ubuntu-latest
+            python-version: "3.12"
+          - os: ubuntu-latest
+            python-version: "3.13"
+          - os: ubuntu-latest
+            python-version: "3.14"
+          - os: windows-latest
+            python-version: "3.13"
+          - os: macos-latest
+            python-version: "3.13"
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.13"
+          python-version: ${{ matrix.python-version }}
       - run: python -m pip install -e ".[dev]"
-      - run: ruff check lexphon tests/test_production.py
-      - run: python -c "import lexphon; from importlib.resources import files; assert files('lexphon').joinpath('profiles.toml').is_file(); assert files('lexphon').joinpath('py.typed').is_file()"
+      - run: ruff check lexphon tests
       - run: pytest
+
+  lower-bound:
+    name: g2lex lower bound
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: python -m pip install "g2lex==0.1.8" pytest ruff
+      - run: python -m pip install --no-deps -e .
+      - run: ruff check lexphon tests
+      - run: pytest tests/test_mvp.py tests/test_production.py
+
+  build-artifacts:
+    name: build and test ${{ matrix.artifact }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        artifact: [wheel, sdist]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: python -m pip install build
       - run: python -m build
+      - name: Install and smoke-test the ${{ matrix.artifact }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${{ matrix.artifact }}" = "wheel" ]; then
+            artifact=(dist/*.whl)
+          else
+            artifact=(dist/*.tar.gz)
+          fi
+          venv="${RUNNER_TEMP}/lexphon-${{ matrix.artifact }}"
+          python -m venv "$venv"
+          "$venv/bin/python" -m pip install pytest "${artifact[0]}"
+          cd "$RUNNER_TEMP"
+          "$venv/bin/python" -m pytest "$GITHUB_WORKSPACE/tests/test_packaging.py" -q

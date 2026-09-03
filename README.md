@@ -1,10 +1,19 @@
 # Lexphon
 
-**Lexphon** is a lexicon-driven phonemizer and CLI built on [G2Lex](https://github.com/buchwandler/g2lex). It consumes released pronunciation assets and returns IPA without producing Kokoro phonemes.
+**Lexphon** is a generic, lexicon-driven phonemizer and CLI built on [G2Lex](https://github.com/buchwandler/g2lex). It consumes released pronunciation assets and returns normalized IPA without producing Kokoro phonemes.
 
 ```text
-g2lex-data release -> explicit Lexphon install -> local G2Lex lookup -> IPA -> KokoroG2P adapter
+g2lex-data producer -> G2Lex storage -> Lexphon runtime -> application adapter
 ```
+
+The ownership boundary is deliberate:
+
+- `g2lex-data` obtains, transforms, validates, licenses, and publishes immutable data releases.
+- G2Lex stores and queries typed lexicon data.
+- Lexphon explicitly installs, verifies, selects, and consumes released assets.
+- KokoroG2P or another application converts generic IPA to its model-specific output.
+
+Lexphon must never contain source acquisition or G2Lex build recipes for production dictionaries.
 
 ## Package layout
 
@@ -19,7 +28,7 @@ pytest
 
 ## Data management
 
-Catalog access and downloads are explicit. `Phonemizer`, lookup, token phonemization, and local store inspection never fetch data.
+Catalog access and downloads are explicit. `DataStore.install()` is the network-capable provisioning operation. `Phonemizer`, lookup, token phonemization, rendering, and local store inspection never fetch a catalog or download a lexicon.
 
 ```bash
 lexphon data available de-DE
@@ -30,9 +39,11 @@ lexphon data verify de-de:gold
 lexphon data remove de-de:gold
 ```
 
-Use `--catalog PATH_OR_URL` and `--data-home PATH` for a local release or alternate store. Installation downloads the manifest first, verifies manifest and asset hashes and sizes, checks catalog and manifest identity, opens the G2Lex asset, and atomically activates a complete version. Installed metadata is sufficient for offline use.
+Use `--catalog PATH_OR_URL` and `--data-home PATH` for a local release or alternate store. Installation downloads the manifest first, verifies manifest and asset hashes and sizes, checks catalog and manifest identity, opens the G2Lex asset, and atomically activates a complete version. Installed metadata is sufficient for offline use and a copied store can be opened without the catalog.
 
 The production German assets are `de-de:gold`, `de-de:crane`, `de-de:espeak`, and `de-de:olaph`. English CMUdict is available as `en-us:cmudict`. Membership assets can be installed for inventory use but cannot be selected as pronunciation layers.
+
+Data release versions and the Lexphon Python package version are independent. Pin the data catalog or release during provisioning, and pin the Python dependency separately.
 
 ## CLI
 
@@ -59,7 +70,12 @@ Fallback is disabled by default. Unknown tokens remain visible to downstream app
 from lexphon import DataStore, Phonemizer
 
 store = DataStore()
-with Phonemizer("de-DE", lexicons=["de-de:crane"], store=store) as g2p:
+with Phonemizer(
+    "de-DE",
+    lexicons=["de-de:gold"],
+    store=store,
+    fallback=None,
+) as g2p:
     result = g2p.phonemize_tokens("Die Leute")
     for token in result.tokens:
         print(token.text, token.pronunciation, token.source, token.lexicon_id)
@@ -69,4 +85,4 @@ with Phonemizer("de-DE", lexicons=["de-de:crane"], store=store) as g2p:
 
 ## KokoroG2P boundary
 
-KokoroG2P should import the Python API, convert returned IPA using its model-specific vocabulary, and apply its own fallback and ratings policy. Lexphon does not import KokoroG2P, perform Kokoro validation, or download dictionaries during phonemization.
+KokoroG2P should import Lexphon's Python API, use `fallback=None`, convert returned IPA using its model-specific vocabulary, and apply its own fallback, stress, ratings, and diagnostics policy. Lexphon does not import KokoroG2P, perform Kokoro validation, or download dictionaries during phonemization.

@@ -22,6 +22,12 @@ class _Layer:
     lexicon: Any
 
 
+def _normalize_language(language: object) -> str:
+    if not isinstance(language, str):
+        return ""
+    return language.casefold().replace("_", "-")
+
+
 class Phonemizer:
     """Generic lexicon-first phonemizer returning normalized IPA."""
 
@@ -47,6 +53,13 @@ class Phonemizer:
                     raise LexiconNotUsableError(
                         f"lexicon {identifier!r} has kind {kind!r}; only pronunciation lexica can be layers"
                     )
+                if _normalize_language(metadata.get("language")) != _normalize_language(
+                    self.profile.language
+                ):
+                    raise LexiconNotUsableError(
+                        f"lexicon {identifier!r} language {metadata.get('language')!r} is not compatible "
+                        f"with profile {self.profile.language!r}"
+                    )
                 encoding = metadata.get("phoneme_encoding")
                 if not isinstance(encoding, str) or encoding.casefold() == "none":
                     raise LexiconNotUsableError(
@@ -69,18 +82,18 @@ class Phonemizer:
                         lexicon=g2lex.open(self.store.path(identifier)),
                     )
                 )
+            if fallback == "espeak":
+                self.fallback: Fallback | None = EspeakFallback()
+            elif fallback is None:
+                self.fallback = None
+            elif isinstance(fallback, str):
+                raise ValueError(f"unknown fallback: {fallback}")
+            else:
+                self.fallback = fallback
         except Exception:
             for layer in self.layers:
                 layer.lexicon.close()
             raise
-        if fallback == "espeak":
-            self.fallback: Fallback | None = EspeakFallback()
-        elif fallback is None:
-            self.fallback = None
-        elif isinstance(fallback, str):
-            raise ValueError(f"unknown fallback: {fallback}")
-        else:
-            self.fallback = fallback
         self._closed = False
 
     def _ensure_open(self) -> None:
@@ -112,6 +125,7 @@ class Phonemizer:
         if self.fallback is not None:
             value = self.fallback.phonemize(token, self.language)
             if value:
+                value = to_ipa(value, "ipa")
                 return PronunciationToken(
                     text=token,
                     pronunciation=value,

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import unicodedata
 from pathlib import Path
 
 import g2lex
@@ -302,3 +303,131 @@ def test_failed_install_does_not_activate(release: Path, tmp_path: Path) -> None
         store.install(broken)
     assert store.installed() == ()
     assert not list(store.assets_root.glob("**/.install-*"))
+
+
+def test_rejects_cross_language_lexicon_layer(release: Path, tmp_path: Path) -> None:
+    catalog = load_catalog(str(release))
+    store = DataStore(tmp_path / "store")
+    store.install(catalog.artifact("en-us:cmudict"))
+    with pytest.raises(LexiconNotUsableError, match="not compatible"):
+        Phonemizer("de-DE", lexicons=["en-us:cmudict"], store=store)
+
+
+def test_accepts_normalized_same_locale(release: Path, tmp_path: Path) -> None:
+    catalog = load_catalog(str(release))
+    store = DataStore(tmp_path / "store")
+    store.install(catalog.artifact("de-de:gold"))
+    index = json.loads(store.index_path.read_text(encoding="utf-8"))
+    index["artifacts"]["de-de:gold"]["language"] = "de_DE"
+    _write_json(store.index_path, index)
+    with Phonemizer("de-de", lexicons=["de-de:gold"], store=store) as engine:
+        assert engine.lookup("Haus").known
+
+
+def test_constructor_closes_open_layers_after_later_failure(
+    release: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    catalog = load_catalog(str(release))
+    store = DataStore(tmp_path / "store")
+    for identifier in ("de-de:gold", "de-de:crane"):
+        store.install(catalog.artifact(identifier))
+
+    opened: list[object] = []
+
+    class TrackedLexicon:
+        def __init__(self) -> None:
+            self.closed = False
+
+        def close(self) -> None:
+            self.closed = True
+
+    def fake_open(path: object) -> TrackedLexicon:
+        if opened:
+            raise RuntimeError("simulated open failure")
+        lexicon = TrackedLexicon()
+        opened.append(lexicon)
+        return lexicon
+
+    monkeypatch.setattr("lexphon.engine.g2lex.open", fake_open)
+    with pytest.raises(RuntimeError, match="simulated open failure"):
+        Phonemizer(
+            "de-DE",
+            lexicons=["de-de:gold", "de-de:crane"],
+            store=store,
+        )
+    assert opened and opened[0].closed
+
+
+def test_same_id_and_data_version_cannot_change_content(release: Path, tmp_path: Path) -> None:
+    catalog = load_catalog(str(release))
+    artifact = catalog.artifact("de-de:gold")
+    store = DataStore(tmp_path / "store")
+    path = store.install(artifact)
+    original_bytes = path.read_bytes()
+    original_index = store.index_path.read_bytes()
+    changed = artifact.__class__(
+        artifact.id,
+        artifact.language,
+        artifact.name,
+        artifact.display_name,
+        artifact.kind,
+        artifact.phoneme_encoding,
+        artifact.data_version,
+        artifact.release_tag,
+        artifact.manifest,
+        {**artifact.asset, "sha256": "f" * 64},
+        artifact.source,
+    )
+    with pytest.raises(DataIntegrityError, match="immutable"):
+        store.install(changed)
+    assert path.read_bytes() == original_bytes
+    assert store.index_path.read_bytes() == original_index
+    assert store.verify(artifact.id)
+
+
+def test_install_rejects_traversal_asset_name(release: Path, tmp_path: Path) -> None:
+    artifact = load_catalog(str(release)).artifact("de-de:gold")
+    unsafe = artifact.__class__(
+        artifact.id,
+        artifact.language,
+        artifact.name,
+        artifact.display_name,
+        artifact.kind,
+        artifact.phoneme_encoding,
+        artifact.data_version,
+        artifact.release_tag,
+        artifact.manifest,
+        {**artifact.asset, "name": "../escape.g2lex"},
+        artifact.source,
+    )
+    with pytest.raises(DataIntegrityError, match="invalid asset filename"):
+        DataStore(tmp_path / "store").install(unsafe)
+
+
+def test_malformed_store_index_is_a_stable_integrity_error(tmp_path: Path) -> None:
+    store = DataStore(tmp_path / "store")
+    store.root.mkdir()
+    store.index_path.write_text("{", encoding="utf-8")
+    with pytest.raises(DataIntegrityError, match="invalid Lexphon store index"):
+        store.installed()
+
+
+def test_fallback_pronunciation_is_nfc(release: Path, tmp_path: Path) -> None:
+    artifact = load_catalog(str(release)).artifact("de-de:gold")
+    store = DataStore(tmp_path / "store")
+    store.install(artifact)
+
+    class DecomposedFallback:
+        def phonemize(self, text: str, language: str) -> str:
+            return "e\u0301"
+
+    with Phonemizer(
+        "de-DE",
+        lexicons=[artifact.id],
+        store=store,
+        fallback=DecomposedFallback(),
+    ) as engine:
+        token = engine.lookup("missing", tag="NOUN")
+    assert token.pronunciation == "é"
+    assert token.pronunciation == unicodedata.normalize("NFC", token.pronunciation or "")
+    assert token.variants == ("é",)
