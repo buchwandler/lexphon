@@ -79,7 +79,7 @@ class DataStore:
         temp = self.index_path.with_name(f".{self.index_path.name}.{os.getpid()}.tmp")
         try:
             temp.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-            with temp.open("rb") as handle:
+            with temp.open("r+b") as handle:
                 os.fsync(handle.fileno())
             os.replace(temp, self.index_path)
         finally:

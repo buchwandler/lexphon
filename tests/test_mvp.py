@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 from pathlib import Path
 
 import g2lex
@@ -20,6 +21,21 @@ def _write_json(path: Path, value: object) -> None:
     path.write_text(
         json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8"
     )
+
+
+def test_write_index_fsyncs_writable_descriptor(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    store = DataStore(tmp_path / "store")
+    original_fsync = os.fsync
+
+    def fsync(fd: int) -> None:
+        os.write(fd, b"")
+        original_fsync(fd)
+
+    monkeypatch.setattr(os, "fsync", fsync)
+    store._write_index({"schema_version": 1, "artifacts": {}})
+    assert store.installed() == ()
 
 
 def _fixture_catalog(tmp_path: Path) -> Path:
