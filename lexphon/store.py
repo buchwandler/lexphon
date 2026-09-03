@@ -5,6 +5,7 @@ import json
 import os
 import re
 import shutil
+import sys
 import tempfile
 import urllib.request
 from pathlib import Path
@@ -25,7 +26,7 @@ def default_data_home() -> Path:
     if os.name == "nt":
         base = Path(os.environ.get("LOCALAPPDATA", Path.home() / "AppData" / "Local"))
         return base / "lexphon"
-    if os.sys.platform == "darwin":
+    if sys.platform == "darwin":
         return Path.home() / "Library" / "Application Support" / "lexphon"
     return Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local" / "share")) / "lexphon"
 
@@ -257,8 +258,8 @@ class DataStore:
                 )
         for key in ("asset_sha256", "logical_sha256"):
             if key in manifest:
-                expected = artifact.asset.get("sha256" if key == "asset_sha256" else key)
-                if expected is not None and manifest[key] != expected:
+                expected_value = artifact.asset.get("sha256" if key == "asset_sha256" else key)
+                if expected_value is not None and manifest[key] != expected_value:
                     raise DataIntegrityError(
                         f"catalog and manifest {key} disagree for {artifact.id}"
                     )

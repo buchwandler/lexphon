@@ -3,6 +3,7 @@ from __future__ import annotations
 import unicodedata
 from dataclasses import dataclass
 from importlib.resources import files
+from typing import Literal, cast
 
 try:
     import tomllib
@@ -35,7 +36,10 @@ class LanguageProfile:
         if self.unicode_normalization.casefold() == "none":
             normalized = value
         else:
-            normalized = unicodedata.normalize(self.unicode_normalization.upper(), value)
+            form = cast(
+                Literal["NFC", "NFD", "NFKC", "NFKD"], self.unicode_normalization.upper()
+            )
+            normalized = unicodedata.normalize(form, value)
         if self.apostrophe_normalization.casefold() == "ascii":
             normalized = normalized.translate(_APOSTROPHE_MAP)
         return normalized

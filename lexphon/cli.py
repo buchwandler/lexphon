@@ -5,7 +5,7 @@ import json
 import sys
 
 from . import __version__
-from .catalog import load_catalog
+from .catalog import CatalogArtifact, load_catalog
 from .engine import Phonemizer
 from .errors import LexphonError
 from .profiles import ProfileRegistry
@@ -58,9 +58,14 @@ def _data_main(argv: list[str]) -> int:
             print(f"removed {identifier}")
     elif args.command == "available":
         catalog = load_catalog(args.catalog)
-        artifacts = catalog.for_language(args.language) if args.language else catalog.artifacts
-        for item in artifacts:
-            print(f"{item.id}\t{item.language}\t{item.phoneme_encoding}\t{item.data_version}")
+        available_artifacts: tuple[CatalogArtifact, ...] = (
+            catalog.for_language(args.language) if args.language else catalog.artifacts
+        )
+        for available_artifact in available_artifacts:
+            print(
+                f"{available_artifact.id}\t{available_artifact.language}\t"
+                f"{available_artifact.phoneme_encoding}\t{available_artifact.data_version}"
+            )
     return 0
 
 

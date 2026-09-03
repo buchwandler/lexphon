@@ -36,6 +36,11 @@ exclude = ["tests*"]
 [tool.setuptools.package-data]
 lexphon = ["profiles.toml", "py.typed"]
 
+
+[tool.mypy]
+[[tool.mypy.overrides]]
+module = ["g2lex", "tomli"]
+ignore_missing_imports = true
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"

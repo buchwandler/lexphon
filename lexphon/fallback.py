@@ -15,9 +15,12 @@ class EspeakFallback:
     """Optional eSpeak/eSpeak-NG IPA fallback. It is never enabled implicitly."""
 
     def __init__(self, executable: str | None = None):
-        self.executable = executable or shutil.which("espeak-ng") or shutil.which("espeak")
-        if not self.executable:
-            raise LexphonError("eSpeak fallback requested but espeak-ng/espeak is not installed")
+        executable_path = executable or shutil.which("espeak-ng") or shutil.which("espeak")
+        if not executable_path:
+            raise LexphonError(
+                "eSpeak fallback requested but espeak-ng/espeak is not installed"
+            )
+        self.executable = executable_path
 
     def phonemize(self, text: str, language: str) -> str | None:
         voice = language.lower().replace("_", "-")
