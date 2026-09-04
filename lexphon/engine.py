@@ -161,11 +161,7 @@ class Phonemizer:
             if callable(prefixes):
                 candidates = prefixes(text, position)
             else:
-                candidates = tuple(
-                    key
-                    for key in layer.lexicon
-                    if text.startswith(key, position)
-                )
+                candidates = tuple(key for key in layer.lexicon if text.startswith(key, position))
             for candidate in sorted(candidates, key=len, reverse=True):
                 if candidate in seen:
                     continue
