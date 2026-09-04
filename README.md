@@ -33,7 +33,9 @@ pytest
 
 ## Data management
 
-Catalog access and downloads are explicit. `DataStore.install()` is the network-capable provisioning operation. `Phonemizer`, lookup, token phonemization, rendering, and local store inspection never fetch a catalog or download a lexicon.
+Catalog access and downloads are explicit. The user-visible data states are distinct: a catalog declaration is not proof of remote publication, and remote publication is not local installation. `DataStore.install()` is the network-capable provisioning operation. `Phonemizer`, lookup, token phonemization, rendering, and local store inspection never fetch a catalog or download a lexicon.
+
+`lexphon data available` lists artifacts declared by the selected catalog only. It does not download the referenced manifest or asset or verify that release files are reachable. `lexphon data install` retrieves and verifies those files. If a catalog points to a missing release resource, the install diagnostic reports the logical ID, manifest or asset, release tag, data version, URL, and HTTP or connectivity failure, and confirms that nothing was installed.
 
 ```bash
 lexphon data available de-DE
@@ -42,10 +44,10 @@ lexphon data list
 lexphon data info de-de:gold
 lexphon data verify de-de:gold
 lexphon data remove de-de:gold
+lexphon phonemize --language de-DE "Die Leute kommen."
 ```
 
 Use `--catalog PATH_OR_URL` and `--data-home PATH` for a local release or alternate store. Installation downloads the manifest first, verifies manifest and asset hashes and sizes, checks catalog and manifest identity, opens the G2Lex asset, and atomically activates a complete version. Installed metadata is sufficient for offline use and a copied store can be opened without the catalog.
-
 The production German assets are `de-de:gold`, `de-de:crane`, `de-de:espeak`, and `de-de:olaph`. English CMUdict is available as `en-us:cmudict`. Membership assets can be installed for inventory use but cannot be selected as pronunciation layers.
 
 Data release versions and the Lexphon Python package version are independent. Pin the data catalog or release during provisioning, and pin the Python dependency separately.
@@ -53,6 +55,9 @@ Data release versions and the Lexphon Python package version are independent. Pi
 ## CLI
 
 ```bash
+lexphon --help
+lexphon languages
+lexphon phonemize --language de-DE "Die Leute kommen."
 lexphon -v de-DE "Die Leute kommen."
 lexphon -v de-DE --lexicon de-de:crane "Die Leute kommen."
 lexphon -v de-DE --lexicon de-de:crane --tag DET "die"

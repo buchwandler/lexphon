@@ -3,6 +3,8 @@ from __future__ import annotations
 import hashlib
 import json
 import unicodedata
+import urllib.error
+import urllib.request
 from pathlib import Path
 
 import g2lex
@@ -10,6 +12,7 @@ import pytest
 
 from lexphon import (
     CatalogError,
+    DataDownloadError,
     DataIntegrityError,
     DataStore,
     LexiconNotInstalledError,
@@ -431,3 +434,202 @@ def test_fallback_pronunciation_is_nfc(release: Path, tmp_path: Path) -> None:
     assert token.pronunciation == "é"
     assert token.pronunciation == unicodedata.normalize("NFC", token.pronunciation or "")
     assert token.variants == ("é",)
+
+
+def test_manifest_download_404_has_structured_context(
+    release: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    artifact = load_catalog(str(release)).artifact("de-de:gold")
+    store = DataStore(tmp_path / "store")
+
+    def fail(url: str, timeout: int) -> object:
+        raise urllib.error.HTTPError(url, 404, "Not Found", hdrs=None, fp=None)
+
+    monkeypatch.setattr(urllib.request, "urlopen", fail)
+    with pytest.raises(DataDownloadError) as caught:
+        store.install(artifact)
+
+    error = caught.value
+    assert error.identifier == artifact.id
+    assert error.resource == "manifest"
+    assert error.release_tag == artifact.release_tag
+    assert error.data_version == artifact.data_version
+    assert error.status_code == 404
+    assert error.url == artifact.manifest["url"]
+    assert not store.index_path.exists()
+    assert not store._version_dir(artifact.id, artifact.data_version).exists()
+    assert not list(store.assets_root.glob("**/.install-*"))
+
+
+def test_asset_download_404_has_asset_context(
+    release: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    artifact = load_catalog(str(release)).artifact("de-de:gold")
+    store = DataStore(tmp_path / "store")
+    original_urlopen = urllib.request.urlopen
+
+    def fail_asset(url: str, timeout: int) -> object:
+        if url == artifact.asset["url"]:
+            raise urllib.error.HTTPError(url, 404, "Not Found", hdrs=None, fp=None)
+        return original_urlopen(url, timeout=timeout)
+
+    monkeypatch.setattr(urllib.request, "urlopen", fail_asset)
+    with pytest.raises(DataDownloadError) as caught:
+        store.install(artifact)
+
+    assert caught.value.resource == "asset"
+    assert caught.value.identifier == artifact.id
+    assert not store.installed()
+    assert not store._version_dir(artifact.id, artifact.data_version).exists()
+    assert not list(store.assets_root.glob("**/.install-*"))
+
+
+def test_network_download_failure_is_not_integrity_error(
+    release: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    artifact = load_catalog(str(release)).artifact("de-de:gold")
+    store = DataStore(tmp_path / "store")
+
+    def fail(url: str, timeout: int) -> object:
+        raise urllib.error.URLError("connection refused")
+
+    monkeypatch.setattr(urllib.request, "urlopen", fail)
+    with pytest.raises(DataDownloadError) as caught:
+        store.install(artifact)
+
+    assert caught.value.status_code is None
+    assert caught.value.resource == "manifest"
+    assert caught.value.reason is not None
+    assert "connection refused" in caught.value.reason
+
+
+def test_root_help_lists_discoverable_commands(capsys: pytest.CaptureFixture[str]) -> None:
+    with pytest.raises(SystemExit) as caught:
+        main(["--help"])
+
+    assert caught.value.code == 0
+    output = capsys.readouterr().out
+    assert all(word in output for word in ("phonemize", "data", "languages"))
+    assert "lexphon data install" in output
+
+
+def test_data_help_describes_commands(capsys: pytest.CaptureFixture[str]) -> None:
+    with pytest.raises(SystemExit) as caught:
+        main(["data", "--help"])
+
+    assert caught.value.code == 0
+    output = capsys.readouterr().out
+    assert "available" in output
+    assert "List lexicons declared by the selected catalog" in output
+    assert "does not prove" in output
+    assert all(word in output for word in ("install", "list", "info", "verify", "remove"))
+
+
+def test_data_install_help_describes_atomic_workflow(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    with pytest.raises(SystemExit) as caught:
+        main(["data", "install", "--help"])
+
+    assert caught.value.code == 0
+    output = capsys.readouterr().out.lower()
+    assert all(word in output for word in ("id", "downloads", "verify", "atomically", "failed install"))
+
+
+def test_data_empty_states_are_explicit(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    assert main(["data", "--data-home", str(tmp_path), "list"]) == 0
+    assert capsys.readouterr().out.strip() == "No lexicons installed."
+
+    assert main(["data", "--data-home", str(tmp_path), "verify"]) == 0
+    assert "nothing to verify" in capsys.readouterr().out.lower()
+
+
+def test_available_no_match_is_explicit(
+    release: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    assert main(["data", "--catalog", str(release), "available", "fr-XX"]) == 0
+    assert "No catalog entries found for language 'fr-XX'." in capsys.readouterr().out
+
+
+def test_cli_download_404_is_actionable(
+    release: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    raw = json.loads(release.read_text(encoding="utf-8"))
+    raw["artifacts"][0]["manifest"]["url"] = "https://example.invalid/missing.manifest.json"
+    catalog_path = tmp_path / "404-catalog.json"
+    _write_json(catalog_path, raw)
+
+    def fail(url: str, timeout: int) -> object:
+        raise urllib.error.HTTPError(url, 404, "Not Found", hdrs=None, fp=None)
+
+    monkeypatch.setattr(urllib.request, "urlopen", fail)
+    assert main(
+        [
+            "data",
+            "--catalog",
+            str(catalog_path),
+            "--data-home",
+            str(tmp_path / "store"),
+            "install",
+            "de-de:gold",
+        ]
+    ) == 2
+
+    error = capsys.readouterr().err
+    assert all(
+        value in error
+        for value in (
+            "de-de:gold",
+            "manifest",
+            "2026.09.0",
+            "404",
+            "URL",
+            "catalog entry",
+            "not available",
+            "Nothing was installed",
+        )
+    )
+
+
+def test_explicit_and_legacy_phonemize_forms_match(
+    release: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    catalog = load_catalog(str(release))
+    store = DataStore(tmp_path / "store")
+    store.install(catalog.artifact("en-us:cmudict"))
+
+    legacy = main(
+        [
+            "-v",
+            "en-US",
+            "--data-home",
+            str(store.root),
+            "--lexicon",
+            "en-us:cmudict",
+            "hello",
+        ]
+    )
+    legacy_output = capsys.readouterr().out
+    explicit = main(
+        [
+            "phonemize",
+            "--language",
+            "en-US",
+            "--data-home",
+            str(store.root),
+            "--lexicon",
+            "en-us:cmudict",
+            "hello",
+        ]
+    )
+    assert legacy == explicit == 0
+    assert legacy_output == capsys.readouterr().out
+
+
+def test_languages_and_voices_are_compatible(capsys: pytest.CaptureFixture[str]) -> None:
+    assert main(["languages"]) == 0
+    languages = capsys.readouterr().out
+    assert main(["voices"]) == 0
+    assert languages == capsys.readouterr().out

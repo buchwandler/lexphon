@@ -20,6 +20,17 @@ Lexphon accepts catalog version 1 with runtime contract `g2lex-data.catalog.v1`.
 
 `DataStore.install()` is the only asset download path and is an explicit network-capable provisioning operation. It downloads and verifies the manifest, validates manifest metadata against the catalog, downloads and verifies the asset, opens it with G2Lex, and moves a complete version into `assets/<logical-id>__<name>/<data-version>/`. A logical ID and data version are immutable. The index is updated atomically. Failed installations remove staging and never register an active partial version.
 
+Remote retrieval and downloaded-data integrity are separate failure classes. The public exception taxonomy is:
+
+```text
+Catalog parsing/contract errors -> CatalogError
+Remote retrieval/publication errors -> DataDownloadError
+Downloaded/local contract violations -> DataIntegrityError
+Missing local installation -> LexiconNotInstalledError
+Installed but unusable pronunciation layer -> LexiconNotUsableError
+```
+
+A catalog can declare an artifact before its referenced release resource is published. `available` reports that declaration without reachability checks. `install` reports retrieval context such as resource, release tag, data version, URL, and HTTP status through `DataDownloadError`; hash, metadata, and G2Lex validation failures remain `DataIntegrityError`.
 `installed.json` stores the local manifest and asset paths plus language, kind, encoding, versions, release tag, hashes, size, and logical hash. `path()`, `metadata()`, `verify()`, and `remove()` use only this local state. A copied store can therefore be opened offline. `Phonemizer`, lookup, token phonemization, and rendering do not load catalogs or access the network.
 
 Data release versions and the Lexphon Python package version are independent. Applications should pin both the Python dependency and the immutable data catalog or release used during provisioning.

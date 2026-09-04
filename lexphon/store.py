@@ -7,6 +7,7 @@ import re
 import shutil
 import sys
 import tempfile
+import urllib.error
 import urllib.request
 from pathlib import Path
 from typing import Any
@@ -14,7 +15,7 @@ from typing import Any
 import g2lex
 
 from .catalog import _ID_RE, CatalogArtifact
-from .errors import DataIntegrityError, LexiconNotInstalledError
+from .errors import DataDownloadError, DataIntegrityError, LexiconNotInstalledError
 
 _DATA_VERSION_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 
@@ -45,10 +46,36 @@ def _validate_data_version(value: str) -> str:
     return value
 
 
-def _download(url: str, target: Path) -> None:
-    target.parent.mkdir(parents=True, exist_ok=True)
-    with urllib.request.urlopen(url, timeout=60) as response, target.open("wb") as output:
-        shutil.copyfileobj(response, output)
+def _download(
+    url: str,
+    target: Path,
+    *,
+    artifact: CatalogArtifact,
+    resource: str,
+) -> None:
+    try:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        with urllib.request.urlopen(url, timeout=60) as response, target.open("wb") as output:
+            shutil.copyfileobj(response, output)
+    except urllib.error.HTTPError as exc:
+        raise DataDownloadError(
+            identifier=artifact.id,
+            resource=resource,
+            url=url,
+            release_tag=artifact.release_tag,
+            data_version=artifact.data_version,
+            status_code=exc.code,
+            reason=str(exc.reason),
+        ) from exc
+    except (urllib.error.URLError, TimeoutError, OSError) as exc:
+        raise DataDownloadError(
+            identifier=artifact.id,
+            resource=resource,
+            url=url,
+            release_tag=artifact.release_tag,
+            data_version=artifact.data_version,
+            reason=str(exc),
+        ) from exc
 
 
 class DataStore:
@@ -166,10 +193,20 @@ class DataStore:
         try:
             staged_manifest = stage / manifest_name
             staged_asset = stage / asset_name
-            _download(str(artifact.manifest["url"]), staged_manifest)
+            _download(
+                str(artifact.manifest["url"]),
+                staged_manifest,
+                artifact=artifact,
+                resource="manifest",
+            )
             self._verify_manifest_hash(artifact, staged_manifest)
             manifest = self._read_manifest(staged_manifest, artifact)
-            _download(str(artifact.asset["url"]), staged_asset)
+            _download(
+                str(artifact.asset["url"]),
+                staged_asset,
+                artifact=artifact,
+                resource="asset",
+            )
             self._verify_asset(artifact, staged_asset)
             self._verify_manifest_agreement(artifact, manifest)
             self._verify_g2lex(artifact, staged_asset)
@@ -177,7 +214,7 @@ class DataStore:
             stage = Path()
             self._register(artifact, asset_path, manifest_path)
             return asset_path
-        except DataIntegrityError:
+        except (DataIntegrityError, DataDownloadError):
             raise
         except Exception as exc:
             raise DataIntegrityError(f"unable to install lexicon {artifact.id}: {exc}") from exc

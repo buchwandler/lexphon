@@ -6,6 +6,7 @@ from ._version import __version__
 from .engine import Phonemizer
 from .errors import (
     CatalogError,
+    DataDownloadError,
     DataIntegrityError,
     LexiconNotInstalledError,
     LexiconNotUsableError,
@@ -18,6 +19,7 @@ from .store import DataStore
 
 __all__ = [
     "CatalogError",
+    "DataDownloadError",
     "DataIntegrityError",
     "DataStore",
     "LexiconNotInstalledError",
