@@ -533,12 +533,12 @@ def test_data_install_help_describes_atomic_workflow(
 
     assert caught.value.code == 0
     output = capsys.readouterr().out.lower()
-    assert all(word in output for word in ("id", "downloads", "verify", "atomically", "failed install"))
+    assert all(
+        word in output for word in ("id", "downloads", "verify", "atomically", "failed install")
+    )
 
 
-def test_data_empty_states_are_explicit(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
+def test_data_empty_states_are_explicit(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     assert main(["data", "--data-home", str(tmp_path), "list"]) == 0
     assert capsys.readouterr().out.strip() == "No lexicons installed."
 
@@ -554,7 +554,10 @@ def test_available_no_match_is_explicit(
 
 
 def test_cli_download_404_is_actionable(
-    release: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    release: Path,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     raw = json.loads(release.read_text(encoding="utf-8"))
     raw["artifacts"][0]["manifest"]["url"] = "https://example.invalid/missing.manifest.json"
@@ -565,17 +568,20 @@ def test_cli_download_404_is_actionable(
         raise urllib.error.HTTPError(url, 404, "Not Found", hdrs=None, fp=None)
 
     monkeypatch.setattr(urllib.request, "urlopen", fail)
-    assert main(
-        [
-            "data",
-            "--catalog",
-            str(catalog_path),
-            "--data-home",
-            str(tmp_path / "store"),
-            "install",
-            "de-de:gold",
-        ]
-    ) == 2
+    assert (
+        main(
+            [
+                "data",
+                "--catalog",
+                str(catalog_path),
+                "--data-home",
+                str(tmp_path / "store"),
+                "install",
+                "de-de:gold",
+            ]
+        )
+        == 2
+    )
 
     error = capsys.readouterr().err
     assert all(

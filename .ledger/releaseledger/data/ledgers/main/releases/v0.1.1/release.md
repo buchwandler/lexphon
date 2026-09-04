@@ -7,7 +7,7 @@ versioning:
 version: v0.1.1
 status: released
 title: Lexphon 0.1.1
-released_at: '2026-09-04'
+released_at: "2026-09-04"
 previous_version: v0.1.0
 cancel_reason: null
 superseded_by: null

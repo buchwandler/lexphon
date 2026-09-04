@@ -17,9 +17,7 @@ class EspeakFallback:
     def __init__(self, executable: str | None = None):
         executable_path = executable or shutil.which("espeak-ng") or shutil.which("espeak")
         if not executable_path:
-            raise LexphonError(
-                "eSpeak fallback requested but espeak-ng/espeak is not installed"
-            )
+            raise LexphonError("eSpeak fallback requested but espeak-ng/espeak is not installed")
         self.executable = executable_path
 
     def phonemize(self, text: str, language: str) -> str | None:

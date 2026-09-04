@@ -36,9 +36,7 @@ class LanguageProfile:
         if self.unicode_normalization.casefold() == "none":
             normalized = value
         else:
-            form = cast(
-                Literal["NFC", "NFD", "NFKC", "NFKD"], self.unicode_normalization.upper()
-            )
+            form = cast(Literal["NFC", "NFD", "NFKC", "NFKD"], self.unicode_normalization.upper())
             normalized = unicodedata.normalize(form, value)
         if self.apostrophe_normalization.casefold() == "ascii":
             normalized = normalized.translate(_APOSTROPHE_MAP)

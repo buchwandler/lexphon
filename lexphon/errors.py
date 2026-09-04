@@ -33,6 +33,7 @@ class DataDownloadError(LexphonError):
             message += f": {detail}"
         super().__init__(message)
 
+
 class DataIntegrityError(LexphonError):
     """An installed or downloaded data artifact violates its contract."""
 

@@ -12,16 +12,17 @@ status: accepted
 audience: null
 scopes: []
 source_refs:
-- git:1804791d611e4d1d211fc9ad2ca3d880462ef9cb
+  - git:1804791d611e4d1d211fc9ad2ca3d880462ef9cb
 paths:
-- pyproject.toml
+  - pyproject.toml
 issues: []
 prs: []
 sources:
-- git:1804791d611e4d1d211fc9ad2ca3d880462ef9cb
+  - git:1804791d611e4d1d211fc9ad2ca3d880462ef9cb
 contributors: []
 breaking: false
 internal: true
 order: 2
 ---
+
 Development-only dependency changes for type checking and test coverage.

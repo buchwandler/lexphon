@@ -97,7 +97,9 @@ manifest and G2Lex asset, checks readability, and atomically activates the
 complete version. A failed install does not activate partial data.
 """,
     )
-    p_install.add_argument("id", metavar="ID", nargs="+", help="catalog lexicon ID, for example de-de:gold")
+    p_install.add_argument(
+        "id", metavar="ID", nargs="+", help="catalog lexicon ID, for example de-de:gold"
+    )
 
     sub.add_parser(
         "list",
@@ -135,6 +137,7 @@ This command does not alter the catalog or g2lex-data releases.
     )
     p_remove.add_argument("id", metavar="ID", nargs="+", help="installed lexicon ID")
     return parser
+
 
 def _format_download_error(error: DataDownloadError) -> None:
     print(f"lexphon: cannot install {error.identifier!r}", file=sys.stderr)
