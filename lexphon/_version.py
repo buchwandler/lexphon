@@ -44,6 +44,8 @@ def get_version() -> str:
                 "--dirty",
                 "--match",
                 "v[0-9]*",
+                "--match",
+                "[0-9]*",
             ],
             stderr=subprocess.DEVNULL,
             text=True,
