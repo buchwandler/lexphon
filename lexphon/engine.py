@@ -138,6 +138,51 @@ class Phonemizer:
             text=token, pronunciation=None, source="unknown", selector_tag=tag
         )
 
+    def lookup_prefixes(
+        self,
+        text: str,
+        *,
+        position: int = 0,
+        tag: str | None = None,
+    ) -> tuple[PronunciationToken, ...]:
+        """Return known pronunciation layers matching prefixes at ``position``.
+
+        Results are ordered by layer precedence and then longest match first.
+        Only exact dictionary keys are returned; fallback providers are not
+        consulted for prefix matching.
+        """
+        self._ensure_open()
+        if not isinstance(text, str) or position < 0 or position >= len(text):
+            return ()
+        matches: list[PronunciationToken] = []
+        seen: set[str] = set()
+        for layer in self.layers:
+            for candidate in reversed(layer.lexicon.prefixes(text, position)):
+                if candidate in seen:
+                    continue
+                value = layer.lexicon.get(candidate, None)
+                if value is None:
+                    continue
+                variants = g2lex.pronunciation_variants(value, tag=tag)
+                if not variants:
+                    continue
+                ipa_variants = tuple(to_ipa(item, layer.encoding) for item in variants)
+                matches.append(
+                    PronunciationToken(
+                        text=candidate,
+                        pronunciation=ipa_variants[0],
+                        source="lexicon",
+                        lexicon_id=layer.identifier,
+                        matched_key=candidate,
+                        source_encoding=layer.encoding,
+                        variants=ipa_variants,
+                        selector_tag=tag,
+                    )
+                )
+                seen.add(candidate)
+        return tuple(matches)
+
+
     def phonemize_tokens(self, text: str, *, tag: str | None = None) -> PhonemizationResult:
         self._ensure_open()
         tokens: list[PronunciationToken] = []

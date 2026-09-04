@@ -128,6 +128,24 @@ def test_dynamic_version_is_exposed() -> None:
     assert isinstance(__version__, str) and __version__
 
 
+def test_builtin_lexhint_profiles_resolve_aliases() -> None:
+    expected = {
+        "ru": "ru:lexhint",
+        "th": "th:lexhint",
+        "vi": "vi:lexhint",
+        "ja": "ja:lexhint",
+        "ko": "ko:lexhint",
+        "pt": "pt:lexhint",
+    }
+    from lexphon.profiles import ProfileRegistry
+
+    registry = ProfileRegistry()
+    for language, lexicon_id in expected.items():
+        profile = registry.resolve(language)
+        assert profile.default_lexicons == (lexicon_id,)
+        assert registry.resolve(profile.aliases[0]).language == profile.language
+
+
 def test_install_is_explicit_and_verified(tmp_path: Path) -> None:
     catalog = load_catalog(str(_fixture_catalog(tmp_path)))
     store = DataStore(tmp_path / "store")
@@ -148,6 +166,19 @@ def test_german_typed_lookup_and_structured_tokens(tmp_path: Path) -> None:
         result = engine.phonemize_tokens("Die Leute kommen.", tag="DET")
         assert result.render() == "diː ˈlɔʏtə ˈkɔmən."
         assert result.tokens[-1].punctuation
+
+
+def test_prefix_lookup_is_structured_and_longest_first(tmp_path: Path) -> None:
+    store = _installed_store(tmp_path)
+    with Phonemizer("de-DE", lexicons=["de-de:demo"], store=store, fallback=None) as engine:
+        matches = engine.lookup_prefixes("Hausboot")
+        assert [token.matched_key for token in matches] == ["Haus"]
+        assert matches[0].text == "Haus"
+        assert matches[0].lexicon_id == "de-de:demo"
+        assert matches[0].source_encoding == "ipa"
+        assert matches[0].variants == ("haʊ̯s",)
+        assert engine.lookup_prefixes("xHaus", position=1)[0].matched_key == "Haus"
+        assert engine.lookup_prefixes("missing") == ()
 
 
 def test_arpabet_is_normalized_to_ipa_and_variants_survive(tmp_path: Path) -> None:

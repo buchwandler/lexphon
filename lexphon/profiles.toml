@@ -32,3 +32,45 @@ default_lexicons = ["sv-se:nst"]
 case_candidates = ["exact", "lower", "title"]
 unicode_normalization = "NFC"
 apostrophe_normalization = "ascii"
+
+[profile."ru"]
+aliases = ["ru-ru"]
+default_lexicons = ["ru:lexhint"]
+case_candidates = ["exact", "lower"]
+unicode_normalization = "NFC"
+apostrophe_normalization = "none"
+
+[profile."th"]
+aliases = ["th-th"]
+default_lexicons = ["th:lexhint"]
+case_candidates = ["exact"]
+unicode_normalization = "NFC"
+apostrophe_normalization = "none"
+
+[profile."vi"]
+aliases = ["vi-vn"]
+default_lexicons = ["vi:lexhint"]
+case_candidates = ["exact", "lower"]
+unicode_normalization = "NFC"
+apostrophe_normalization = "none"
+
+[profile."ja"]
+aliases = ["ja-jp"]
+default_lexicons = ["ja:lexhint"]
+case_candidates = ["exact"]
+unicode_normalization = "NFC"
+apostrophe_normalization = "none"
+
+[profile."ko"]
+aliases = ["ko-kr"]
+default_lexicons = ["ko:lexhint"]
+case_candidates = ["exact"]
+unicode_normalization = "NFC"
+apostrophe_normalization = "none"
+
+[profile."pt"]
+aliases = ["pt-br", "pt-pt"]
+default_lexicons = ["pt:lexhint"]
+case_candidates = ["exact", "lower"]
+unicode_normalization = "NFC"
+apostrophe_normalization = "ascii"
