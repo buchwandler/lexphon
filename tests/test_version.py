@@ -89,7 +89,9 @@ def test_get_version_falls_back_to_sdist_metadata_for_invalid_git_output(
     assert version.get_version() == "2.3.4"
 
 
-@pytest.mark.parametrize("error", (OSError("git unavailable"), subprocess.SubprocessError("git failed")))
+@pytest.mark.parametrize(
+    "error", (OSError("git unavailable"), subprocess.SubprocessError("git failed"))
+)
 def test_get_version_falls_back_to_sdist_metadata_when_git_fails(
     monkeypatch: pytest.MonkeyPatch, error: Exception
 ) -> None:

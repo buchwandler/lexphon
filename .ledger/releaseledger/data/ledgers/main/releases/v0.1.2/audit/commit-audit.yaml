@@ -1,0 +1,87 @@
+schema_version: 1
+object_type: commit_audit_sheet
+versioning:
+  schema_version: 1
+  revision: 3
+release_version: v0.1.2
+git_base_ref: v0.1.1
+git_base_sha: d9814a926dd4f7af8cb1d26e2e4c332896d56cc4
+git_head_ref: HEAD
+git_head_sha: 1f4ad699746a51bde65b7ef9016d0b43f0da7e1f
+git_range: d9814a926dd4f7af8cb1d26e2e4c332896d56cc4..1f4ad699746a51bde65b7ef9016d0b43f0da7e1f
+commit_count: 3
+rows:
+  - sha: 50c019336b4e427c1b7ddc9608e0200eefb8bdc7
+    source_ref: git:50c019336b4e427c1b7ddc9608e0200eefb8bdc7
+    short_sha: 50c0193
+    changed_paths:
+      - lexphon/engine.py
+    stats:
+      files_changed: 0
+      insertions: 10
+      deletions: 1
+    inspected: true
+    inspected_paths:
+      - lexphon/engine.py
+    observed_behavior:
+      Phonemizer accepts lexicon mappings without a prefixes helper
+      and sorts matching candidates by descending length before resolving them.
+    public_impact: public
+    decision: accepted
+    evidence_subject: "fix: support versions without prefix"
+    target_entry_key: lexicon-prefix-matching
+    target_entry_id: entry-0001
+    notes:
+      User-visible compatibility fix for lexicon implementations that expose iteration
+      and lookup but no prefixes method.
+  - sha: f8d9d5466d6891152a8283e07f36fae3b0fdb94d
+    source_ref: git:f8d9d5466d6891152a8283e07f36fae3b0fdb94d
+    short_sha: f8d9d54
+    changed_paths:
+      - lexphon/engine.py
+    stats:
+      files_changed: 0
+      insertions: 1
+      deletions: 5
+    inspected: true
+    inspected_paths:
+      - lexphon/engine.py
+    observed_behavior:
+      Reformats the fallback candidate iteration introduced by the
+      preceding lexicon compatibility fix without changing its behavior.
+    public_impact: internal
+    decision: grouped
+    evidence_subject: "chore: pre-commit"
+    target_entry_key: lexicon-prefix-matching
+    target_entry_id: entry-0001
+    notes: Grouped with the behavior change it reformats.
+  - sha: 1f4ad699746a51bde65b7ef9016d0b43f0da7e1f
+    source_ref: git:1f4ad699746a51bde65b7ef9016d0b43f0da7e1f
+    short_sha: 1f4ad69
+    changed_paths:
+      - lexphon/_version.py
+      - tests/test_alphabets_profiles.py
+      - tests/test_fallback_models.py
+      - tests/test_version.py
+    stats:
+      files_changed: 0
+      insertions: 270
+      deletions: 0
+    inspected: true
+    inspected_paths:
+      - lexphon/_version.py
+      - tests/test_alphabets_profiles.py
+      - tests/test_fallback_models.py
+      - tests/test_version.py
+    observed_behavior:
+      Version discovery asks Git for both v-prefixed and unprefixed
+      version tags, with focused tests covering version fallback and pronunciation model
+      behavior.
+    public_impact: public
+    decision: accepted
+    evidence_subject: "fix: improved coverage"
+    target_entry_key: version-tag-detection
+    target_entry_id: entry-0002
+    notes:
+      The version discovery change is user-visible; the added tests provide coverage
+      evidence.

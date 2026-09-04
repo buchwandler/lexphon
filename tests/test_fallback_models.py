@@ -36,6 +36,7 @@ def test_espeak_fallback_normalizes_voice_and_output(monkeypatch: pytest.MonkeyP
     def run(command: list[str], **kwargs: object) -> SimpleNamespace:
         calls.append(tuple(command))
         return SimpleNamespace(returncode=0, stdout="  haː loʊ  \n")
+
     monkeypatch.setattr(fallback.subprocess, "run", run)
 
     assert fallback.EspeakFallback("/fake/espeak").phonemize("Hallo", "de_DE") == "haː loʊ"
