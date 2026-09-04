@@ -1,0 +1,142 @@
+schema_version: 1
+object_type: commit_audit_sheet
+versioning:
+  schema_version: 1
+  revision: 3
+release_version: v0.1.1
+git_base_ref: v0.1.0
+git_base_sha: 31fd82414956235e23f75547169a296240e3d1e1
+git_head_ref: HEAD
+git_head_sha: 3f935b71a215f16d78f6aa35be3621452048cdce
+git_range: 31fd82414956235e23f75547169a296240e3d1e1..3f935b71a215f16d78f6aa35be3621452048cdce
+commit_count: 5
+rows:
+- sha: e94570bb0c6ca21a0df8eed0f067cbe32aac31a5
+  source_ref: git:e94570bb0c6ca21a0df8eed0f067cbe32aac31a5
+  short_sha: e94570b
+  changed_paths:
+  - .github/workflows/codecov.yml
+  - README.md
+  stats:
+    files_changed: 0
+    insertions: 6
+    deletions: 1
+  inspected: true
+  inspected_paths:
+  - .github/workflows/codecov.yml
+  - README.md
+  observed_behavior: The README now exposes package and coverage status badges, and
+    the coverage workflow measures the lexphon package.
+  public_impact: docs
+  decision: accepted
+  evidence_subject: 'doc: add batches'
+  target_entry_key: docs-1
+  target_entry_id: entry-0001
+  notes: Documentation and project quality reporting; no runtime behavior change.
+- sha: 1804791d611e4d1d211fc9ad2ca3d880462ef9cb
+  source_ref: git:1804791d611e4d1d211fc9ad2ca3d880462ef9cb
+  short_sha: '1804791'
+  changed_paths:
+  - pyproject.toml
+  stats:
+    files_changed: 0
+    insertions: 1
+    deletions: 1
+  inspected: true
+  inspected_paths:
+  - pyproject.toml
+  observed_behavior: Development extras include pytest-cov in addition to mypy and
+    the existing test and build tools.
+  public_impact: internal
+  decision: internal
+  evidence_subject: 'chore: dev deps'
+  target_entry_key: internal-1
+  target_entry_id: entry-0002
+  notes: Development tooling only.
+- sha: f8b546713b11655eff46bc1e6ce8b3e6f1903797
+  source_ref: git:f8b546713b11655eff46bc1e6ce8b3e6f1903797
+  short_sha: f8b5467
+  changed_paths:
+  - lexphon/cli.py
+  - lexphon/fallback.py
+  - lexphon/profiles.py
+  - lexphon/store.py
+  - pyproject.toml
+  stats:
+    files_changed: 0
+    insertions: 29
+    deletions: 11
+  inspected: true
+  inspected_paths:
+  - lexphon/cli.py
+  - lexphon/fallback.py
+  - lexphon/profiles.py
+  - lexphon/store.py
+  - pyproject.toml
+  observed_behavior: The implementation and configuration were adjusted to satisfy
+    mypy checks without changing the documented product behavior.
+  public_impact: internal
+  decision: internal
+  evidence_subject: 'chore: add mypy'
+  target_entry_key: internal-2
+  target_entry_id: entry-0003
+  notes: Static typing and implementation clarity only.
+- sha: 0a7701814f3c3d344306f60880982af54fbba8e2
+  source_ref: git:0a7701814f3c3d344306f60880982af54fbba8e2
+  short_sha: 0a77018
+  changed_paths:
+  - README.md
+  - docs/ARCHITECTURE.md
+  - lexphon/__init__.py
+  - lexphon/cli.py
+  - lexphon/errors.py
+  - lexphon/store.py
+  - tests/test_production.py
+  stats:
+    files_changed: 0
+    insertions: 524
+    deletions: 43
+  inspected: true
+  inspected_paths:
+  - README.md
+  - docs/ARCHITECTURE.md
+  - lexphon/__init__.py
+  - lexphon/cli.py
+  - lexphon/errors.py
+  - lexphon/store.py
+  - tests/test_production.py
+  observed_behavior: The CLI now has explicit phonemize, data, and language commands
+    with help text; failed manifest or asset retrieval raises structured DataDownloadError
+    diagnostics and leaves no partial installation; the new exception is exported
+    publicly.
+  public_impact: public
+  decision: accepted
+  evidence_subject: 'feat: better cli help and structure'
+  target_entry_key: added-1
+  target_entry_id: entry-0004
+  notes: Public CLI, error taxonomy, and atomic installation failure behavior.
+- sha: 3f935b71a215f16d78f6aa35be3621452048cdce
+  source_ref: git:3f935b71a215f16d78f6aa35be3621452048cdce
+  short_sha: 3f935b7
+  changed_paths:
+  - lexphon/engine.py
+  - lexphon/profiles.toml
+  - tests/test_mvp.py
+  stats:
+    files_changed: 0
+    insertions: 118
+    deletions: 0
+  inspected: true
+  inspected_paths:
+  - lexphon/engine.py
+  - lexphon/profiles.toml
+  - tests/test_mvp.py
+  observed_behavior: Phonemizer exposes prefix lookup with precedence and longest-match
+    ordering, and built-in profiles now cover Russian, Thai, Vietnamese, Japanese,
+    Korean, and Portuguese aliases.
+  public_impact: public
+  decision: accepted
+  evidence_subject: 'feat: update profiles'
+  target_entry_key: added-2
+  target_entry_id: entry-0005
+  notes: Public API and supported language profiles, covered by focused tests.
