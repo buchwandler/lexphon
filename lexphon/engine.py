@@ -157,7 +157,16 @@ class Phonemizer:
         matches: list[PronunciationToken] = []
         seen: set[str] = set()
         for layer in self.layers:
-            for candidate in reversed(layer.lexicon.prefixes(text, position)):
+            prefixes = getattr(layer.lexicon, "prefixes", None)
+            if callable(prefixes):
+                candidates = prefixes(text, position)
+            else:
+                candidates = tuple(
+                    key
+                    for key in layer.lexicon
+                    if text.startswith(key, position)
+                )
+            for candidate in sorted(candidates, key=len, reverse=True):
                 if candidate in seen:
                     continue
                 value = layer.lexicon.get(candidate, None)
