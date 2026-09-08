@@ -305,7 +305,15 @@ class DataStore:
         try:
             with g2lex.open(asset_path) as lexicon:
                 len(lexicon)
-                source_encoding = lexicon.metadata.get("source", {}).get("pronunciation_alphabet")
+                metadata = lexicon.metadata
+                if not isinstance(metadata, dict):
+                    raise DataIntegrityError(f"G2Lex metadata is not an object for {artifact.id}")
+                source = metadata.get("source", {})
+                if not isinstance(source, dict):
+                    raise DataIntegrityError(
+                        f"G2Lex source metadata is not an object for {artifact.id}"
+                    )
+                source_encoding = source.get("pronunciation_alphabet")
                 if (
                     source_encoding is not None
                     and source_encoding.casefold() != artifact.phoneme_encoding

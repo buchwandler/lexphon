@@ -187,7 +187,7 @@ class Phonemizer:
         token: str,
         layer: _Layer,
         matched_key: str,
-        value: object,
+        value: g2lex.LexiconValue,
         tag: str | None,
     ) -> PronunciationToken | None:
         variants = g2lex.pronunciation_variants(value, tag=tag)
