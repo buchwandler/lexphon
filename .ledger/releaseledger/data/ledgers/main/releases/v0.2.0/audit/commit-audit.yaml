@@ -1,0 +1,135 @@
+schema_version: 1
+object_type: commit_audit_sheet
+versioning:
+  schema_version: 1
+  revision: 3
+release_version: v0.2.0
+git_base_ref: v0.1.3
+git_base_sha: 762b22f3e6d302616744b6443f04d11ea7ba483a
+git_head_ref: HEAD
+git_head_sha: cd172864bb6ae8b5caab5a6e9e3e31df6b4f3f3e
+git_range: 762b22f3e6d302616744b6443f04d11ea7ba483a..cd172864bb6ae8b5caab5a6e9e3e31df6b4f3f3e
+commit_count: 2
+rows:
+  - sha: 5975008ea6b6177e982f151a681cf3cada0c7dca
+    source_ref: git:5975008ea6b6177e982f151a681cf3cada0c7dca
+    short_sha: "5975008"
+    changed_paths:
+      - README.md
+      - docs/ARCHITECTURE.md
+      - docs/KOKOROG2P_INTEGRATION.md
+      - lexphon/__init__.py
+      - lexphon/alphabets.py
+      - lexphon/cli.py
+      - lexphon/engine.py
+      - lexphon/fallback.py
+      - lexphon/models.py
+      - lexphon/pronunciation.py
+      - pyproject.toml
+      - tests/test_fallback_espeak.py
+      - tests/test_fallback_goruut.py
+      - tests/test_pronunciation_controls.py
+    stats:
+      files_changed: 0
+      insertions: 504
+      deletions: 77
+    inspected: true
+    inspected_paths:
+      - README.md
+      - docs/ARCHITECTURE.md
+      - docs/KOKOROG2P_INTEGRATION.md
+      - lexphon/__init__.py
+      - lexphon/alphabets.py
+      - lexphon/cli.py
+      - lexphon/engine.py
+      - lexphon/fallback.py
+      - lexphon/models.py
+      - lexphon/pronunciation.py
+      - pyproject.toml
+      - tests/test_fallback_espeak.py
+      - tests/test_fallback_goruut.py
+      - tests/test_pronunciation_controls.py
+    observed_behavior:
+      Added optional eSpeak and Goruut pronunciation providers, introduced
+      provider-backed lookup and batching, and documented provider integration behavior.
+    public_impact: public
+    decision: accepted
+    stale: false
+    evidence_subject: "feat: include fallback"
+    target_entry_id: entry-0001
+    notes:
+      Reviewed provider implementations, public exports, integration documentation,
+      and provider tests.
+  - sha: cd172864bb6ae8b5caab5a6e9e3e31df6b4f3f3e
+    source_ref: git:cd172864bb6ae8b5caab5a6e9e3e31df6b4f3f3e
+    short_sha: cd17286
+    changed_paths:
+      - README.md
+      - docs/ARCHITECTURE.md
+      - docs/KOKOROG2P_INTEGRATION.md
+      - docs/changelog.md
+      - examples/kokorog2p_backend.py
+      - lexphon/__init__.py
+      - lexphon/_version.py
+      - lexphon/alphabets.py
+      - lexphon/cli.py
+      - lexphon/engine.py
+      - lexphon/errors.py
+      - lexphon/fallback.py
+      - lexphon/language.py
+      - lexphon/models.py
+      - lexphon/profiles.py
+      - lexphon/pronunciation.py
+      - lexphon/providers.py
+      - tests/test_alphabets_profiles.py
+      - tests/test_fallback_espeak.py
+      - tests/test_fallback_goruut.py
+      - tests/test_fallback_models.py
+      - tests/test_mvp.py
+      - tests/test_production.py
+      - tests/test_pronunciation_controls.py
+      - tests/test_v020.py
+    stats:
+      files_changed: 0
+      insertions: 649
+      deletions: 577
+    inspected: true
+    inspected_paths:
+      - README.md
+      - docs/ARCHITECTURE.md
+      - docs/KOKOROG2P_INTEGRATION.md
+      - docs/changelog.md
+      - examples/kokorog2p_backend.py
+      - lexphon/__init__.py
+      - lexphon/_version.py
+      - lexphon/alphabets.py
+      - lexphon/cli.py
+      - lexphon/engine.py
+      - lexphon/errors.py
+      - lexphon/fallback.py
+      - lexphon/language.py
+      - lexphon/models.py
+      - lexphon/profiles.py
+      - lexphon/pronunciation.py
+      - lexphon/providers.py
+      - tests/test_alphabets_profiles.py
+      - tests/test_fallback_espeak.py
+      - tests/test_fallback_goruut.py
+      - tests/test_fallback_models.py
+      - tests/test_mvp.py
+      - tests/test_production.py
+      - tests/test_pronunciation_controls.py
+      - tests/test_v020.py
+    observed_behavior:
+      Reworked the public API around structured pronunciation variants
+      and explicit provider errors, normalized language tags, added provider metadata
+      and batching, and changed the CLI to an explicit phonemize command with JSON schema
+      2.
+    public_impact: public
+    decision: accepted
+    stale: false
+    evidence_subject: "feat: reworked API for v0.2.0"
+    target_entry_id: entry-0002
+    notes:
+      Reviewed changed API models, CLI, provider implementations, downstream example,
+      documentation, and v0.2.0 tests.

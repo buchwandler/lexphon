@@ -44,7 +44,9 @@ class EspeakProvider:
     def __init__(self, executable: str | None = None):
         executable_path = executable or shutil.which("espeak-ng") or shutil.which("espeak")
         if not executable_path:
-            raise ProviderUnavailableError("eSpeak provider requested but espeak-ng/espeak is not installed")
+            raise ProviderUnavailableError(
+                "eSpeak provider requested but espeak-ng/espeak is not installed"
+            )
         self.executable = executable_path
 
     def phonemize(self, text: str, language: str) -> str | None:
@@ -79,7 +81,9 @@ class GoruutProvider:
             module = importlib.import_module("pygoruut.pygoruut")
             factory = module.Pygoruut
         except (ImportError, AttributeError) as error:
-            raise ProviderUnavailableError("Goruut provider requested but pygoruut is not installed") from error
+            raise ProviderUnavailableError(
+                "Goruut provider requested but pygoruut is not installed"
+            ) from error
         try:
             self.client = factory()
         except Exception as error:
