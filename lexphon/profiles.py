@@ -1,15 +1,15 @@
 from __future__ import annotations
 
+import sys
 import unicodedata
 from dataclasses import dataclass
 from importlib.resources import files
 from typing import Literal, cast
 
-try:
+if sys.version_info >= (3, 11):
     import tomllib
-except ModuleNotFoundError:  # pragma: no cover
+else:
     import tomli as tomllib  # type: ignore[no-redef]
-
 from .language import normalize_language_tag
 
 _APOSTROPHE_MAP = str.maketrans(
