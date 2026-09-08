@@ -1,0 +1,64 @@
+schema_version: 1
+object_type: commit_audit_sheet
+versioning:
+  schema_version: 1
+  revision: 2
+release_version: v0.1.3
+git_base_ref: v0.1.2
+git_base_sha: 257a2f837de33dcd1da9d54848668417d2880e7e
+git_head_ref: HEAD
+git_head_sha: 8de932526285cc59d31047758a009fe45015baf8
+git_range: 257a2f837de33dcd1da9d54848668417d2880e7e..8de932526285cc59d31047758a009fe45015baf8
+commit_count: 1
+rows:
+  - sha: 8de932526285cc59d31047758a009fe45015baf8
+    source_ref: git:8de932526285cc59d31047758a009fe45015baf8
+    short_sha: 8de9325
+    changed_paths:
+      - .ledger/releaseledger/data/ledgers/main/events/events.jsonl
+      - .ledger/releaseledger/data/ledgers/main/releases/v0.1.3/entries/entry-0001.md
+      - .ledger/releaseledger/data/ledgers/main/releases/v0.1.3/entries/entry-0002.md
+      - .ledger/releaseledger/data/ledgers/main/releases/v0.1.3/release.md
+      - README.md
+      - docs/ARCHITECTURE.md
+      - docs/KOKOROG2P_INTEGRATION.md
+      - docs/changelog.md
+      - lexphon/__init__.py
+      - lexphon/alphabets.py
+      - lexphon/cli.py
+      - lexphon/engine.py
+      - lexphon/models.py
+      - tests/test_alphabets_profiles.py
+      - tests/test_mvp.py
+      - tests/test_production.py
+    stats:
+      files_changed: 0
+      insertions: 397
+      deletions: 15
+    inspected: true
+    inspected_paths:
+      - README.md
+      - docs/ARCHITECTURE.md
+      - docs/KOKOROG2P_INTEGRATION.md
+      - lexphon/__init__.py
+      - lexphon/alphabets.py
+      - lexphon/cli.py
+      - lexphon/engine.py
+      - lexphon/models.py
+      - tests/test_alphabets_profiles.py
+      - tests/test_mvp.py
+      - tests/test_production.py
+    observed_behavior:
+      IPA normalization now removes recognized inline language markers
+      while preserving source notation and normalized marker metadata; public models
+      and CLI JSON expose per-variant provenance, and lookup plus prefix lookup share
+      the same structured result behavior. Documentation and regression coverage define
+      the downstream handoff and marker offset behavior.
+    public_impact: public
+    decision: accepted
+    stale: false
+    evidence_subject: "feat: better handling of language markers"
+    target_entry_id: entry-0001
+    notes:
+      The commit adds the public normalization and provenance behavior represented
+      by entry-0001; entry-0002 captures the supporting integration documentation.

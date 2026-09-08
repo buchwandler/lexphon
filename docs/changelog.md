@@ -1,10 +1,10 @@
 # Changelog
 
-## [v0.1.3] - Unreleased
+## [v0.1.3] - 2026-09-08
 
 ### Fixed
 
-- Normalized inline language markers into clean IPA, exposed structured provenance, and unified exact and prefix lookup behavior
+- Fixed IPA marker normalization, structured provenance, and exact/prefix lookup parity
 
 ### Documentation
 
