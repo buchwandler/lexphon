@@ -257,16 +257,16 @@ class Phonemizer:
             self.lookup_lexicon(token, tag=tag) for token in values
         ]
         missing = tuple(index for index, result in enumerate(results) if result is None)
+        if not missing:
+            return tuple(results)
         provider = self._get_provider()
-        if not missing or provider is None:
+        if provider is None:
             return tuple(results)
 
         if isinstance(provider, BatchPronunciationProvider):
             try:
-                raw_values = tuple(
-                    provider.phonemize_many(
-                        tuple(values[index] for index in missing), self.language
-                    )
+                batch = provider.phonemize_many(
+                    tuple(values[index] for index in missing), self.language
                 )
             except ProviderError:
                 raise
@@ -275,6 +275,12 @@ class Phonemizer:
                 raise ProviderExecutionError(
                     f"provider {name!r} batch execution failed: {error}"
                 ) from error
+            if isinstance(batch, (str, bytes)) or not isinstance(batch, Sequence):
+                name = self._provider_name_for(provider)
+                raise ProviderOutputError(
+                    f"provider {name!r} returned an invalid batch output; expected a sequence"
+                )
+            raw_values = tuple(batch)
             if len(raw_values) != len(missing):
                 name = self._provider_name_for(provider)
                 raise ProviderOutputError(

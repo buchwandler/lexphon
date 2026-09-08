@@ -6,8 +6,165 @@ import subprocess
 from collections.abc import Sequence
 from typing import Any, Protocol, runtime_checkable
 
-from .errors import ProviderExecutionError, ProviderOutputError, ProviderUnavailableError
+from .errors import (
+    ProviderError,
+    ProviderExecutionError,
+    ProviderOutputError,
+    ProviderUnavailableError,
+)
 from .language import normalize_language_tag
+
+_GORUUT_LANGUAGE_ALIASES = {
+    "en-us": "EnglishAmerican",
+    "en-gb": "EnglishBritish",
+    "de-de": "de",
+    "fr-fr": "fr",
+    "sv-se": "sv",
+}
+_GORUUT_ISO_CODES = frozenset(
+    {
+        "af",
+        "am",
+        "ar",
+        "az",
+        "be",
+        "bn",
+        "my",
+        "ceb",
+        "ce",
+        "zh",
+        "cs",
+        "da",
+        "nl",
+        "dz",
+        "de",
+        "en",
+        "eo",
+        "fa",
+        "fi",
+        "fr",
+        "gu",
+        "ha",
+        "he",
+        "hi",
+        "hu",
+        "is",
+        "id",
+        "tts",
+        "it",
+        "jam",
+        "ja",
+        "jv",
+        "kk",
+        "ko",
+        "lb",
+        "mk",
+        "ml",
+        "ms",
+        "mt",
+        "mr",
+        "mn",
+        "ne",
+        "no",
+        "ps",
+        "pl",
+        "pt",
+        "pa",
+        "ro",
+        "ru",
+        "sk",
+        "es",
+        "sw",
+        "sv",
+        "ta",
+        "te",
+        "th",
+        "bo",
+        "tr",
+        "uk",
+        "ur",
+        "ug",
+        "vi",
+        "zu",
+        "hy",
+        "eu",
+        "bg",
+        "ca",
+        "ny",
+        "hr",
+        "et",
+        "gl",
+        "ka",
+        "km",
+        "lo",
+        "lv",
+        "lt",
+        "sr",
+        "tl",
+        "yo",
+        "sq",
+        "an",
+        "as",
+        "ba",
+        "bpy",
+        "bs",
+        "chr",
+        "cu",
+        "gla",
+        "gle",
+        "kl",
+        "gn",
+        "ht",
+        "haw",
+        "io",
+        "ia",
+        "kn",
+        "quc",
+        "kok",
+        "ku",
+        "ky",
+        "qdb",
+        "ltg",
+        "la",
+        "lat",
+        "lfn",
+        "jbo",
+        "smj",
+        "mi",
+        "nah",
+        "nci",
+        "ncz",
+        "nog",
+        "om",
+        "pap",
+        "qu",
+        "qya",
+        "tn",
+        "shn",
+        "sjn",
+        "sd",
+        "si",
+        "sl",
+        "tt",
+        "tk",
+        "uz",
+        "cyw",
+        "cys",
+        "yue",
+    }
+)
+
+
+def _to_goruut_language(language: str) -> str:
+    normalized = normalize_language_tag(language)
+    if normalized in _GORUUT_LANGUAGE_ALIASES:
+        return _GORUUT_LANGUAGE_ALIASES[normalized]
+    if normalized in _GORUUT_ISO_CODES:
+        return normalized
+    primary = normalized.split("-", 1)[0]
+    if primary in _GORUUT_ISO_CODES:
+        return primary
+    raise ProviderExecutionError(f"Goruut provider does not support language {language!r}")
 
 
 class PronunciationProvider(Protocol):
@@ -90,11 +247,22 @@ class GoruutProvider:
             raise ProviderUnavailableError("Goruut provider could not be initialized") from error
 
     def phonemize(self, text: str, language: str) -> str | None:
+        goruut_language = _to_goruut_language(language)
         try:
-            value = self.client.phonemize(language=language, sentence=text)
+            value = self.client.phonemize(language=goruut_language, sentence=text)
+        except ProviderError:
+            raise
         except Exception as error:
             raise ProviderExecutionError(f"Goruut provider execution failed: {error}") from error
-        return _raw_output(value, self.name)
+        if value is None:
+            return None
+        try:
+            rendered = str(value)
+        except Exception as error:
+            raise ProviderExecutionError(
+                f"Goruut provider returned an unrenderable response: {error}"
+            ) from error
+        return _raw_output(rendered, self.name)
 
 
 def create_provider(name: str) -> PronunciationProvider:

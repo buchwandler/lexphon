@@ -160,7 +160,7 @@ def _format_download_error(error: DataDownloadError) -> None:
         "is incomplete, or the catalog points to a missing file.",
         file=sys.stderr,
     )
-    print("Nothing was installed.", file=sys.stderr)
+    print("The failed lexicon was not installed.", file=sys.stderr)
     print(file=sys.stderr)
     print("Try:", file=sys.stderr)
     print(f"  lexphon data available {error.identifier.split(':', 1)[0]}", file=sys.stderr)

@@ -18,6 +18,14 @@ lexphon data install de-de:gold
 lexphon data verify de-de:gold
 ```
 
+If the application configures `fallback="goruut"`, install the optional adapter explicitly:
+
+```bash
+python -m pip install "lexphon[goruut]"
+```
+
+Pygoruut may provision or start its own Goruut runtime. A pre-populated Lexphon data home removes Lexphon catalog and lexicon downloads, but it does not guarantee offline Goruut startup. Provision the optional provider runtime separately when fully offline startup is required.
+
 Runtime code should open an installed local store without downloading data:
 
 ```python
@@ -30,7 +38,7 @@ engine = Phonemizer(
 )
 ```
 
-Data versions and the Lexphon Python package version are independent. Deployment should pin the catalog or immutable data release during provisioning and pin the Python dependency separately. The runtime image can use a copied, pre-populated `LEXPHON_DATA_HOME` with no catalog or network access.
+Data versions and the Lexphon Python package version are independent. Deployment should pin the catalog or immutable data release during provisioning and pin the Python dependency separately. The runtime image can use a copied, pre-populated `LEXPHON_DATA_HOME` with no Lexphon catalog or lexicon downloads. Optional providers have separate provisioning requirements, especially Goruut/Pygoruut.
 
 ## Runtime contract
 

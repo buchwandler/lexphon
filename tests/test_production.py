@@ -20,7 +20,7 @@ from lexphon import (
     Phonemizer,
 )
 from lexphon.alphabets import to_ipa
-from lexphon.catalog import Catalog, load_catalog
+from lexphon.catalog import Catalog, CatalogArtifact, load_catalog
 from lexphon.cli import main
 from lexphon.profiles import ProfileRegistry
 
@@ -273,6 +273,34 @@ def test_membership_and_lifecycle(release: Path, tmp_path: Path) -> None:
     )
     with pytest.raises(LexiconNotUsableError):
         Phonemizer("de-DE", lexicons=[membership_id], store=store)
+
+
+@pytest.mark.parametrize("asset_path", ["victim.g2lex", "assets/victim.g2lex"])
+def test_remove_rejects_shallow_index_paths(asset_path: str, tmp_path: Path) -> None:
+    store = DataStore(tmp_path / "store")
+    store.root.mkdir(parents=True)
+    (store.root / "keep.txt").write_text("keep", encoding="utf-8")
+    store.assets_root.mkdir()
+    (store.assets_root / "keep.txt").write_text("keep", encoding="utf-8")
+    store._write_index(
+        {
+            "schema_version": 1,
+            "artifacts": {
+                "de-de:gold": {
+                    "data_version": "2026.09.0",
+                    "asset_path": asset_path,
+                    "manifest_path": "assets/de-de__gold/2026.09.0/manifest.json",
+                }
+            },
+        }
+    )
+
+    with pytest.raises(DataIntegrityError, match="do not match"):
+        store.remove("de-de:gold")
+
+    assert (store.root / "keep.txt").read_text(encoding="utf-8") == "keep"
+    assert (store.assets_root / "keep.txt").read_text(encoding="utf-8") == "keep"
+    assert store.metadata("de-de:gold")["asset_path"] == asset_path
 
 
 def test_cli_info_and_structured_json(
@@ -669,9 +697,56 @@ def test_cli_download_404_is_actionable(
             "URL",
             "catalog entry",
             "not available",
-            "Nothing was installed",
+            "failed lexicon was not installed",
         )
     )
+
+
+def test_cli_partial_install_failure_does_not_claim_nothing_installed(
+    release: Path,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    installed = tmp_path / "installed.g2lex"
+    calls = 0
+
+    def install(_store: DataStore, artifact: object) -> Path:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            return installed
+        assert isinstance(artifact, CatalogArtifact)
+        raise DataDownloadError(
+            identifier=artifact.id,
+            resource="manifest",
+            url="https://example.invalid/missing",
+            release_tag=artifact.release_tag,
+            data_version=artifact.data_version,
+            reason="missing",
+        )
+
+    monkeypatch.setattr(DataStore, "install", install)
+    assert (
+        main(
+            [
+                "data",
+                "--catalog",
+                str(release),
+                "--data-home",
+                str(tmp_path / "store"),
+                "install",
+                "de-de:gold",
+                "de-de:crane",
+            ]
+        )
+        == 2
+    )
+
+    captured = capsys.readouterr()
+    assert "installed de-de:gold" in captured.out
+    assert "The failed lexicon was not installed." in captured.err
+    assert "Nothing was installed." not in captured.err
 
 
 def test_explicit_phonemize_form_is_supported_and_legacy_form_is_rejected(

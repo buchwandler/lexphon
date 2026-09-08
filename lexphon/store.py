@@ -396,9 +396,28 @@ class DataStore:
 
     def remove(self, identifier: str) -> None:
         index = self._read_index()
-        metadata = index["artifacts"].pop(identifier, None)
+        metadata = index["artifacts"].get(identifier)
         if metadata is None:
             return
+        if not isinstance(metadata, dict):
+            raise DataIntegrityError(f"invalid metadata for installed lexicon {identifier}")
+        data_version = metadata.get("data_version")
+        if not isinstance(data_version, str):
+            raise DataIntegrityError(f"missing data version for installed lexicon {identifier}")
+        version_dir = self._version_dir(identifier, data_version)
         asset_path = self._local_path(metadata.get("asset_path"), identifier)
-        shutil.rmtree(asset_path.parent, ignore_errors=True)
+        manifest_path = self._local_path(metadata.get("manifest_path"), identifier)
+        if asset_path.parent != version_dir or manifest_path.parent != version_dir:
+            raise DataIntegrityError(
+                f"installed paths for {identifier!r} do not match its data version directory"
+            )
+        self._safe_filename(asset_path.name, "asset")
+        self._safe_filename(manifest_path.name, "manifest")
+        if version_dir.exists():
+            if not version_dir.is_dir():
+                raise DataIntegrityError(
+                    f"installed version path is not a directory for {identifier}"
+                )
+            shutil.rmtree(version_dir)
+        del index["artifacts"][identifier]
         self._write_index(index)

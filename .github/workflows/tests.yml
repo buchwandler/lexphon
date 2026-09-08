@@ -35,6 +35,8 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - run: python -m pip install -e ".[dev]"
       - run: ruff check lexphon tests
+      - run: ruff format --check lexphon tests
+      - run: mypy lexphon
       - run: pytest
 
   lower-bound:
@@ -48,7 +50,7 @@ jobs:
       - run: python -m pip install "g2lex==0.1.8" pytest ruff
       - run: python -m pip install --no-deps -e .
       - run: ruff check lexphon tests
-      - run: pytest tests/test_mvp.py tests/test_production.py
+      - run: pytest
 
   build-artifacts:
     name: build and test ${{ matrix.artifact }}
