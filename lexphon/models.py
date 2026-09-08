@@ -6,6 +6,19 @@ from .errors import UnknownWordError
 
 
 @dataclass(frozen=True, slots=True)
+class PronunciationLanguageMarker:
+    language: str
+    ipa_offset: int
+
+
+@dataclass(frozen=True, slots=True)
+class PronunciationVariant:
+    pronunciation: str
+    source_pronunciation: str
+    language_markers: tuple[PronunciationLanguageMarker, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
 class PronunciationToken:
     text: str
     pronunciation: str | None
@@ -17,6 +30,20 @@ class PronunciationToken:
     variants: tuple[str, ...] = ()
     selector_tag: str | None = None
     punctuation: bool = False
+
+    variant_details: tuple[PronunciationVariant, ...] = ()
+
+    @property
+    def source_pronunciation(self) -> str | None:
+        if not self.variant_details:
+            return None
+        return self.variant_details[0].source_pronunciation
+
+    @property
+    def language_markers(self) -> tuple[PronunciationLanguageMarker, ...]:
+        if not self.variant_details:
+            return ()
+        return self.variant_details[0].language_markers
 
     @property
     def known(self) -> bool:

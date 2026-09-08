@@ -45,6 +45,10 @@ def _release(tmp_path: Path) -> Path:
             "ipa",
             [
                 {"word": "haus", "kind": "scalar", "value": "gold"},
+                {"word": "downloaden", "kind": "scalar", "value": "(en)dˈaʊnləʊdən(de)"},
+                {"word": "cancel", "kind": "scalar", "value": "(en)kˈansəl(de)"},
+                {"word": "download", "kind": "scalar", "value": "(en)dˈaʊnləʊd(de)"},
+                {"word": "gecancelt", "kind": "scalar", "value": "ɡəkˈankəlt"},
                 {"word": "die", "kind": "tagged", "items": [["DEFAULT", "diː"], ["DET", "deː"]]},
             ],
         ),
@@ -213,6 +217,20 @@ def test_layer_order_selectors_and_variants(release: Path, tmp_path: Path) -> No
         assert result.variants == ("ˈɹid", "ˈɹɛd")
 
 
+def test_annotated_production_lookup_and_rendering(release: Path, tmp_path: Path) -> None:
+    catalog = load_catalog(str(release))
+    store = DataStore(tmp_path / "store")
+    store.install(catalog.artifact("de-de:gold"))
+
+    with Phonemizer("de-DE", lexicons=["de-de:gold"], store=store) as engine:
+        downloaden = engine.lookup("downloaden")
+        assert downloaden.pronunciation == "dˈaʊnləʊdən"
+        assert downloaden.source_pronunciation == "(en)dˈaʊnləʊdən(de)"
+        assert tuple(marker.language for marker in downloaden.language_markers) == ("en", "de")
+        assert engine.lookup("gecancelt").language_markers == ()
+        assert engine.phonemize_tokens("downloaden").render() == "dˈaʊnləʊdən"
+
+
 def test_german_direct_lookup_parity(release: Path, tmp_path: Path) -> None:
     catalog = load_catalog(str(release))
     store = DataStore(tmp_path / "store")
@@ -283,6 +301,56 @@ def test_cli_info_and_structured_json(
     payload = json.loads(capsys.readouterr().out)
     assert payload["tokens"][0]["source_encoding"] == "arpabet"
     assert payload["tokens"][0]["lexicon_id"] == "en-us:cmudict"
+
+
+def test_cli_json_and_plain_output_use_clean_annotated_ipa(
+    release: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    catalog = load_catalog(str(release))
+    store = DataStore(tmp_path / "store")
+    store.install(catalog.artifact("de-de:gold"))
+
+    assert (
+        main(
+            [
+                "-v",
+                "de-DE",
+                "--data-home",
+                str(store.root),
+                "--lexicon",
+                "de-de:gold",
+                "--json",
+                "downloaden",
+            ]
+        )
+        == 0
+    )
+    payload = json.loads(capsys.readouterr().out)
+    token = payload["tokens"][0]
+    assert token["pronunciation"] == "dˈaʊnləʊdən"
+    assert token["variants"] == ["dˈaʊnləʊdən"]
+    assert token["source_pronunciation"] == "(en)dˈaʊnləʊdən(de)"
+    assert token["language_markers"] == [
+        {"language": "en", "ipa_offset": 0},
+        {"language": "de", "ipa_offset": len("dˈaʊnləʊdən")},
+    ]
+    assert token["variant_details"][0]["language_markers"] == token["language_markers"]
+
+    assert (
+        main(
+            [
+                "-v",
+                "de-DE",
+                "--data-home",
+                str(store.root),
+                "--lexicon",
+                "de-de:gold",
+                "downloaden",
+            ]
+        )
+        == 0
+    )
+    assert capsys.readouterr().out == "dˈaʊnləʊdən\n"
 
 
 def test_failed_install_does_not_activate(release: Path, tmp_path: Path) -> None:

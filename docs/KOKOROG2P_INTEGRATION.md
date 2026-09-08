@@ -13,7 +13,7 @@ KokoroG2P should import Lexphon's Python API. It should not spawn the CLI in its
 Install the desired Lexphon assets explicitly before starting an offline application:
 
 ```bash
-python -m pip install "lexphon>=0.1.0,<0.2"
+python -m pip install "lexphon>=0.1.3,<0.2"
 lexphon data install de-de:gold
 lexphon data verify de-de:gold
 ```
@@ -45,6 +45,14 @@ Use `Phonemizer(..., fallback=None)` so unknown tokens remain explicit. For each
 Lexphon's optional eSpeak fallback is a generic standalone feature. KokoroG2P must not enable it because application-level source and rating semantics need to distinguish dictionary hits, dictionary misses, unrepresentable IPA, eSpeak fallback, and rule fallback.
 
 Lexphon results are structured. Each token provides the original text, IPA pronunciation, source category, output alphabet, logical lexicon ID, matched key, source encoding, ordered IPA variants, selector tag, known status, and punctuation status. The first variant is primary, but later variants remain available to the application.
+
+Lexphon's pronunciation normalization handoff is:
+
+```text
+raw source notation -> clean generic IPA -> structured language-marker metadata
+```
+
+KokoroG2P consumes the clean `pronunciation` and may use `language_markers` as optional lexical or routing evidence. It must not reparse `source_pronunciation` or search `pronunciation` for `(en)`, `(de)`, or other raw marker syntax.
 
 ## German configuration
 

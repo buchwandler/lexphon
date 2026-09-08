@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import re
 import unicodedata
+from dataclasses import dataclass
 
 from .errors import UnsupportedAlphabetError
+from .models import PronunciationLanguageMarker
 
 _ARPA_CONSONANTS = {
     "B": "b",
@@ -53,6 +55,40 @@ _ARPA_VOWELS = {
 }
 _ARPA_TOKEN = re.compile(r"^(?P<phoneme>[A-Z]+)(?P<stress>[012])?$")
 
+_LANGUAGE_MARKER = re.compile(r"\((?P<language>[A-Za-z]{2,3}(?:[-_][A-Za-z0-9]{1,8})*)\)")
+
+
+@dataclass(frozen=True, slots=True)
+class NormalizedPronunciation:
+    pronunciation: str
+    source_pronunciation: str
+    language_markers: tuple[PronunciationLanguageMarker, ...] = ()
+
+
+def _normalize_ipa(value: str) -> NormalizedPronunciation:
+    parts: list[str] = []
+    markers: list[PronunciationLanguageMarker] = []
+    position = 0
+
+    for match in _LANGUAGE_MARKER.finditer(value):
+        segment = unicodedata.normalize("NFC", value[position : match.start()])
+        parts.append(segment)
+        markers.append(
+            PronunciationLanguageMarker(
+                language=match.group("language").casefold().replace("_", "-"),
+                ipa_offset=sum(len(part) for part in parts),
+            )
+        )
+        position = match.end()
+
+    parts.append(unicodedata.normalize("NFC", value[position:]))
+    pronunciation = unicodedata.normalize("NFC", "".join(parts))
+    return NormalizedPronunciation(
+        pronunciation=pronunciation,
+        source_pronunciation=value,
+        language_markers=tuple(markers),
+    )
+
 
 def arpabet_to_ipa(value: str) -> str:
     """Convert CMU-style ARPABET to deterministic broad IPA."""
@@ -98,12 +134,19 @@ def arpabet_to_ipa(value: str) -> str:
     return unicodedata.normalize("NFC", "".join(output))
 
 
-def to_ipa(value: str, encoding: str) -> str:
+def normalize_pronunciation(value: str, encoding: str) -> NormalizedPronunciation:
     if not isinstance(value, str) or not value:
         raise UnsupportedAlphabetError("pronunciation must be a non-empty string")
     key = encoding.casefold().replace("-", "")
     if key in {"ipa", "unicodeipa"}:
-        return unicodedata.normalize("NFC", value)
+        return _normalize_ipa(value)
     if key in {"arpabet", "cmu", "cmudict"}:
-        return arpabet_to_ipa(value)
+        return NormalizedPronunciation(
+            pronunciation=arpabet_to_ipa(value),
+            source_pronunciation=value,
+        )
     raise UnsupportedAlphabetError(f"unsupported pronunciation encoding: {encoding!r}")
+
+
+def to_ipa(value: str, encoding: str) -> str:
+    return normalize_pronunciation(value, encoding).pronunciation

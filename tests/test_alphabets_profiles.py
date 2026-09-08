@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import pytest
 
-from lexphon.alphabets import arpabet_to_ipa, to_ipa
+from lexphon.alphabets import arpabet_to_ipa, normalize_pronunciation, to_ipa
 from lexphon.errors import UnsupportedAlphabetError
+from lexphon.models import PronunciationLanguageMarker
 from lexphon.profiles import LanguageProfile, ProfileRegistry
 
 
@@ -40,6 +41,42 @@ def test_to_ipa_rejects_empty_values_and_unsupported_encodings() -> None:
         to_ipa("", "ipa")
     with pytest.raises(UnsupportedAlphabetError, match="unsupported pronunciation encoding"):
         to_ipa("abc", "xsampa")
+
+
+def test_ipa_language_markers_are_removed_from_public_pronunciation() -> None:
+    result = normalize_pronunciation("(en)dˈaʊnləʊdən(de)", "ipa")
+
+    assert result.pronunciation == "dˈaʊnləʊdən"
+    assert result.source_pronunciation == "(en)dˈaʊnləʊdən(de)"
+    assert tuple(marker.language for marker in result.language_markers) == ("en", "de")
+    assert result.language_markers[0].ipa_offset == 0
+    assert result.language_markers[1].ipa_offset == len(result.pronunciation)
+
+
+def test_ipa_language_markers_normalize_locale_spelling() -> None:
+    result = normalize_pronunciation("(EN_us)demo", "ipa")
+
+    assert result.pronunciation == "demo"
+    assert result.language_markers == (PronunciationLanguageMarker("en-us", 0),)
+
+
+@pytest.mark.parametrize("value", ["(ə)abc", "(t)abc", "(optional)abc", "(foo bar)abc"])
+def test_non_language_parentheses_are_not_silently_stripped(value: str) -> None:
+    result = normalize_pronunciation(value, "ipa")
+
+    assert result.pronunciation == value
+    assert result.language_markers == ()
+
+
+def test_to_ipa_removes_ipa_language_markers() -> None:
+    assert to_ipa("(en)dˈaʊnləʊdən(de)", "ipa") == "dˈaʊnləʊdən"
+
+
+def test_ipa_marker_offsets_use_nfc_normalized_segments() -> None:
+    result = normalize_pronunciation("e\u0301(en)a", "ipa")
+
+    assert result.pronunciation == "éa"
+    assert result.language_markers == (PronunciationLanguageMarker("en", 1),)
 
 
 def test_profile_candidates_without_unicode_normalization() -> None:

@@ -308,6 +308,28 @@ def _phonemize_main(argv: list[str], *, prog: str = "lexphon") -> int:
                                 "matched_key": token.matched_key,
                                 "source_encoding": token.source_encoding,
                                 "variants": list(token.variants),
+                                "variant_details": [
+                                    {
+                                        "pronunciation": detail.pronunciation,
+                                        "source_pronunciation": detail.source_pronunciation,
+                                        "language_markers": [
+                                            {
+                                                "language": marker.language,
+                                                "ipa_offset": marker.ipa_offset,
+                                            }
+                                            for marker in detail.language_markers
+                                        ],
+                                    }
+                                    for detail in token.variant_details
+                                ],
+                                "source_pronunciation": token.source_pronunciation,
+                                "language_markers": [
+                                    {
+                                        "language": marker.language,
+                                        "ipa_offset": marker.ipa_offset,
+                                    }
+                                    for marker in token.language_markers
+                                ],
                                 "selector_tag": token.selector_tag,
                                 "punctuation": token.punctuation,
                             }

@@ -66,6 +66,8 @@ lexphon -v en-US --lexicon en-us:cmudict --json "read"
 
 JSON output contains the rendered IPA plus structured token fields: original text, pronunciation, source category, output alphabet, source encoding, logical lexicon ID, matched key, ordered IPA variants, selector tag, known status, and punctuation status.
 
+Inline language-control markers recognized in IPA source notation are consumed at the Lexphon normalization boundary. They are removed from `pronunciation` and `variants`, while `source_pronunciation`, `language_markers`, and `variant_details` preserve the source and structured marker metadata for diagnostics and optional downstream routing.
+
 Optional standalone fallback is explicit:
 
 ```bash
@@ -92,6 +94,8 @@ with Phonemizer(
 ```
 
 `phonemize_tokens()` is the integration API. It preserves token-level provenance, selectors, variants, punctuation, and unknown words. IPA is normalized to Unicode NFC. ARPABET and CMU-style pronunciations are converted deterministically to IPA. Unsupported alphabets and invalid pronunciation tokens raise stable Lexphon exceptions.
+
+`PronunciationToken.pronunciation` and `.variants` contain clean normalized IPA only. `source_pronunciation`, `.language_markers`, and `.variant_details` retain the raw source notation and per-variant provenance. Downstream adapters should consume the structured metadata and must not search returned pronunciations for raw tags such as `(en)` or `(de)`.
 
 ## KokoroG2P boundary
 

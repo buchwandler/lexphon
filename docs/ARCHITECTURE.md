@@ -41,7 +41,9 @@ Data release versions and the Lexphon Python package version are independent. Ap
 
 Selected layers are searched in caller order. Within each layer, profile-ordered candidates are searched before moving to the next layer. Profiles provide generic Unicode normalization, apostrophe normalization, and exact, lower, casefold, or title candidates. German uses `de` and `de-de` aliases and defaults to `de-de:gold`. English continues to default to `en-us:gold`; CMUdict must be selected explicitly.
 
-The public result alphabet is IPA and every non-null pronunciation is Unicode NFC. ARPABET is converted with deterministic phone and primary or secondary stress rules. Unknown phones and unsupported encodings raise `UnsupportedAlphabetError`. Structured tokens preserve the original token, selected pronunciation, source category, logical lexicon, matched key, source encoding, ordered IPA variants, selector context, and punctuation state. Unknown words remain explicit when fallback is disabled.
+The public result alphabet is IPA and every non-null pronunciation is Unicode NFC. ARPABET is converted with deterministic phone and primary or secondary stress rules. Unknown phones and unsupported encodings raise `UnsupportedAlphabetError`. Lexphon also consumes recognized inline language-control markers in IPA source notation at this boundary. The marker text is removed from public IPA and preserved as `PronunciationLanguageMarker` metadata with offsets into the cleaned IPA.
+
+Structured tokens preserve the original token, selected pronunciation, source category, logical lexicon, matched key, source encoding, ordered IPA variants, selector context, punctuation state, and pronunciation provenance. `PronunciationToken.pronunciation` and `.variants` contain clean IPA. `source_pronunciation`, `language_markers`, and `variant_details` preserve raw source notation and per-variant metadata. Unknown words remain explicit when fallback is disabled.
 
 ## KokoroG2P integration
 

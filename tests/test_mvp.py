@@ -46,7 +46,12 @@ def _fixture_catalog(tmp_path: Path) -> Path:
         '{"word":"die","kind":"tagged","items":[["DEFAULT","diː"],["DET","diː"]]}\n'
         '{"word":"Leute","kind":"scalar","value":"ˈlɔʏtə"}\n'
         '{"word":"kommen","kind":"scalar","value":"ˈkɔmən"}\n'
-        '{"word":"Haus","kind":"scalar","value":"haʊ̯s"}\n',
+        '{"word":"Haus","kind":"scalar","value":"haʊ̯s"}\n'
+        '{"word":"downloaden","kind":"scalar","value":"(en)dˈaʊnləʊdən(de)"}\n'
+        '{"word":"cancel","kind":"scalar","value":"(en)kˈansəl(de)"}\n'
+        '{"word":"download","kind":"scalar","value":"(en)dˈaʊnləʊd(de)"}\n'
+        '{"word":"gecancelt","kind":"scalar","value":"ɡəkˈankəlt"}\n'
+        '{"word":"demo","kind":"list","value":["(en)dɛmo(de)","deːmo"]}\n',
         encoding="utf-8",
     )
     de_asset = release / "de.g2lex"
@@ -166,6 +171,35 @@ def test_german_typed_lookup_and_structured_tokens(tmp_path: Path) -> None:
         result = engine.phonemize_tokens("Die Leute kommen.", tag="DET")
         assert result.render() == "diː ˈlɔʏtə ˈkɔmən."
         assert result.tokens[-1].punctuation
+
+
+def test_annotated_lookup_preserves_clean_and_structured_provenance(tmp_path: Path) -> None:
+    store = _installed_store(tmp_path)
+    with Phonemizer("de-DE", lexicons=["de-de:demo"], store=store) as engine:
+        token = engine.lookup("downloaden")
+        assert token.known
+        assert token.lexicon_id == "de-de:demo"
+        assert token.source_encoding == "ipa"
+        assert token.pronunciation == "dˈaʊnləʊdən"
+        assert token.variants == ("dˈaʊnləʊdən",)
+        assert token.source_pronunciation == "(en)dˈaʊnləʊdən(de)"
+        assert tuple(marker.language for marker in token.language_markers) == ("en", "de")
+        assert token.variant_details[0].source_pronunciation == token.source_pronunciation
+
+        demo = engine.lookup("demo")
+        assert demo.variants == ("dɛmo", "deːmo")
+        assert tuple(marker.language for marker in demo.variant_details[0].language_markers) == (
+            "en",
+            "de",
+        )
+        assert demo.variant_details[1].language_markers == ()
+
+        exact = engine.lookup("download")
+        prefix = engine.lookup_prefixes("download!")[0]
+        assert exact.pronunciation == prefix.pronunciation
+        assert exact.source_pronunciation == prefix.source_pronunciation
+        assert exact.language_markers == prefix.language_markers
+        assert exact.variant_details == prefix.variant_details
 
 
 def test_prefix_lookup_is_structured_and_longest_first(tmp_path: Path) -> None:

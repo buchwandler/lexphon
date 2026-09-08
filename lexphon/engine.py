@@ -6,10 +6,10 @@ from typing import Any
 
 import g2lex
 
-from .alphabets import to_ipa
+from .alphabets import normalize_pronunciation
 from .errors import LexiconNotUsableError, UnsupportedAlphabetError
 from .fallback import EspeakFallback, Fallback
-from .models import PhonemizationResult, PronunciationToken
+from .models import PhonemizationResult, PronunciationToken, PronunciationVariant
 from .profiles import LanguageProfile, ProfileRegistry
 from .store import DataStore
 from .tokenizer import tokenize
@@ -26,6 +26,20 @@ def _normalize_language(language: object) -> str:
     if not isinstance(language, str):
         return ""
     return language.casefold().replace("_", "-")
+
+
+def _normalize_variants(
+    raw_variants: tuple[str, ...],
+    encoding: str,
+) -> tuple[PronunciationVariant, ...]:
+    return tuple(
+        PronunciationVariant(
+            pronunciation=result.pronunciation,
+            source_pronunciation=result.source_pronunciation,
+            language_markers=result.language_markers,
+        )
+        for result in (normalize_pronunciation(value, encoding) for value in raw_variants)
+    )
 
 
 class Phonemizer:
@@ -111,7 +125,8 @@ class Phonemizer:
                 variants = g2lex.pronunciation_variants(value, tag=tag)
                 if not variants:
                     continue
-                ipa_variants = tuple(to_ipa(item, layer.encoding) for item in variants)
+                variant_details = _normalize_variants(variants, layer.encoding)
+                ipa_variants = tuple(detail.pronunciation for detail in variant_details)
                 return PronunciationToken(
                     text=token,
                     pronunciation=ipa_variants[0],
@@ -121,18 +136,27 @@ class Phonemizer:
                     source_encoding=layer.encoding,
                     variants=ipa_variants,
                     selector_tag=tag,
+                    variant_details=variant_details,
                 )
         if self.fallback is not None:
             value = self.fallback.phonemize(token, self.language)
             if value:
-                value = to_ipa(value, "ipa")
+                normalized = normalize_pronunciation(value, "ipa")
+                variant_details = (
+                    PronunciationVariant(
+                        pronunciation=normalized.pronunciation,
+                        source_pronunciation=normalized.source_pronunciation,
+                        language_markers=normalized.language_markers,
+                    ),
+                )
                 return PronunciationToken(
                     text=token,
-                    pronunciation=value,
+                    pronunciation=normalized.pronunciation,
                     source="espeak" if isinstance(self.fallback, EspeakFallback) else "fallback",
                     source_encoding="ipa",
-                    variants=(value,),
+                    variants=(normalized.pronunciation,),
                     selector_tag=tag,
+                    variant_details=variant_details,
                 )
         return PronunciationToken(
             text=token, pronunciation=None, source="unknown", selector_tag=tag
@@ -171,7 +195,8 @@ class Phonemizer:
                 variants = g2lex.pronunciation_variants(value, tag=tag)
                 if not variants:
                     continue
-                ipa_variants = tuple(to_ipa(item, layer.encoding) for item in variants)
+                variant_details = _normalize_variants(variants, layer.encoding)
+                ipa_variants = tuple(detail.pronunciation for detail in variant_details)
                 matches.append(
                     PronunciationToken(
                         text=candidate,
@@ -182,6 +207,7 @@ class Phonemizer:
                         source_encoding=layer.encoding,
                         variants=ipa_variants,
                         selector_tag=tag,
+                        variant_details=variant_details,
                     )
                 )
                 seen.add(candidate)

@@ -14,7 +14,12 @@ from .errors import (
     UnknownWordError,
     UnsupportedAlphabetError,
 )
-from .models import PhonemizationResult, PronunciationToken
+from .models import (
+    PhonemizationResult,
+    PronunciationLanguageMarker,
+    PronunciationToken,
+    PronunciationVariant,
+)
 from .store import DataStore
 
 __all__ = [
@@ -27,7 +32,9 @@ __all__ = [
     "LexphonError",
     "PhonemizationResult",
     "Phonemizer",
+    "PronunciationLanguageMarker",
     "PronunciationToken",
+    "PronunciationVariant",
     "UnknownWordError",
     "UnsupportedAlphabetError",
     "__version__",
