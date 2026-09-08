@@ -14,7 +14,7 @@ class PronunciationLanguageMarker:
 @dataclass(frozen=True, slots=True)
 class PronunciationVariant:
     pronunciation: str
-    source_pronunciation: str
+    source_pronunciation: str | None = None
     language_markers: tuple[PronunciationLanguageMarker, ...] = ()
 
 
@@ -30,8 +30,8 @@ class PronunciationToken:
     variants: tuple[str, ...] = ()
     selector_tag: str | None = None
     punctuation: bool = False
-
     variant_details: tuple[PronunciationVariant, ...] = ()
+    provider: str | None = None
 
     @property
     def source_pronunciation(self) -> str | None:

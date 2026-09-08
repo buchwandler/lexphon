@@ -12,6 +12,9 @@ g2lex-data -> G2Lex -> Lexphon -> application adapters
 
 Lexphon owns catalog consumption, explicit verified installation, immutable local asset storage, language profiles, candidate generation, ordered layered lookup, selectors, pronunciation alphabet normalization, token provenance, CLI behavior, and optional generic fallback engines.
 
+Lexphon owns generic fallback providers as well as lexicon pronunciation cleanup. eSpeak and Goruut return structured IPA provenance, including provider, requested provider language, raw source pronunciation, and removed language-control markers. Raw provider output never crosses the Lexphon boundary. No Kokoro vocabulary conversion or model-specific normalization occurs here.
+
+`Phonemizer.lookup_lexicon()` is the lexicon-evidence operation and never invokes fallback. `Phonemizer.lookup()` is the staged pronunciation operation: it first calls `lookup_lexicon()`, then invokes the configured generic fallback only after a lexicon miss. Fallback results use `source="fallback"` and identify the provider separately.
 Lexphon does not own source acquisition, dataset transformations, licensing transformations, production dictionary build recipes, Kokoro vocabulary, Kokoro stress or rating policy, or hidden downloads. Lexphon must never contain source acquisition or G2Lex build recipes for production dictionaries.
 
 ## Catalog and installation

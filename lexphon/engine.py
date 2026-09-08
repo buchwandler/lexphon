@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from types import TracebackType
 from typing import Any
@@ -7,10 +8,11 @@ from typing import Any
 import g2lex
 
 from .alphabets import normalize_pronunciation
-from .errors import LexiconNotUsableError, UnsupportedAlphabetError
-from .fallback import EspeakFallback, Fallback
+from .errors import LexiconNotUsableError, LexphonError, UnsupportedAlphabetError
+from .fallback import Fallback, FallbackPronunciation, create_fallback
 from .models import PhonemizationResult, PronunciationToken, PronunciationVariant
 from .profiles import LanguageProfile, ProfileRegistry
+from .pronunciation import parse_pronunciation_controls
 from .store import DataStore
 from .tokenizer import tokenize
 
@@ -96,13 +98,13 @@ class Phonemizer:
                         lexicon=g2lex.open(self.store.path(identifier)),
                     )
                 )
-            if fallback == "espeak":
-                self.fallback: Fallback | None = EspeakFallback()
-            elif fallback is None:
-                self.fallback = None
-            elif isinstance(fallback, str):
-                raise ValueError(f"unknown fallback: {fallback}")
-            else:
+            self._fallback_name: str | None = None
+            self.fallback: Fallback | None = None
+            if isinstance(fallback, str):
+                if fallback not in {"espeak", "goruut"}:
+                    raise ValueError(f"unknown fallback: {fallback}")
+                self._fallback_name = fallback
+            elif fallback is not None:
                 self.fallback = fallback
         except Exception:
             for layer in self.layers:
@@ -114,7 +116,83 @@ class Phonemizer:
         if self._closed:
             raise ValueError("phonemizer is closed")
 
-    def lookup(self, token: str, *, tag: str | None = None) -> PronunciationToken:
+    def _get_fallback(self) -> Fallback | None:
+        if self.fallback is not None:
+            return self.fallback
+        if self._fallback_name is None:
+            return None
+        try:
+            self.fallback = create_fallback(self._fallback_name)
+        except LexphonError:
+            return None
+        return self.fallback
+
+    def _coerce_fallback_value(
+        self,
+        fallback: Fallback,
+        value: FallbackPronunciation | str | None,
+    ) -> FallbackPronunciation | None:
+        if isinstance(value, FallbackPronunciation):
+            source = value.source_pronunciation or value.pronunciation
+            parsed = parse_pronunciation_controls(" ".join(source.split()))
+            return FallbackPronunciation(
+                pronunciation=parsed.pronunciation,
+                provider=value.provider,
+                source_pronunciation=source,
+                language_markers=parsed.language_markers,
+                source_encoding=value.source_encoding,
+                provider_language=value.provider_language or self.language,
+            )
+        if not isinstance(value, str) or not value:
+            return None
+        parsed = parse_pronunciation_controls(" ".join(value.split()))
+        return FallbackPronunciation(
+            pronunciation=parsed.pronunciation,
+            provider=getattr(fallback, "name", fallback.__class__.__name__.lower()),
+            source_pronunciation=value,
+            language_markers=parsed.language_markers,
+            provider_language=self.language,
+        )
+
+    def _lookup_fallback(self, token: str) -> FallbackPronunciation | None:
+        fallback = self._get_fallback()
+        if fallback is None:
+            return None
+        try:
+            value = fallback.phonemize(token, self.language)
+        except Exception:  # noqa: BLE001
+            return None
+        return self._coerce_fallback_value(fallback, value)
+
+    def _fallback_token(
+        self,
+        token: str,
+        tag: str | None,
+        result: FallbackPronunciation,
+    ) -> PronunciationToken:
+        variant = PronunciationVariant(
+            pronunciation=result.pronunciation,
+            source_pronunciation=result.source_pronunciation,
+            language_markers=result.language_markers,
+        )
+        return PronunciationToken(
+            text=token,
+            pronunciation=result.pronunciation,
+            source="fallback",
+            source_encoding=result.source_encoding,
+            variants=(result.pronunciation,),
+            selector_tag=tag,
+            variant_details=(variant,),
+            provider=result.provider,
+        )
+
+    def lookup_lexicon(
+        self,
+        token: str,
+        *,
+        tag: str | None = None,
+    ) -> PronunciationToken | None:
+        """Look up a token in the configured lexicon layers only."""
         self._ensure_open()
         candidates = self.profile.candidates(token)
         for layer in self.layers:
@@ -138,28 +216,58 @@ class Phonemizer:
                     selector_tag=tag,
                     variant_details=variant_details,
                 )
-        if self.fallback is not None:
-            value = self.fallback.phonemize(token, self.language)
-            if value:
-                normalized = normalize_pronunciation(value, "ipa")
-                variant_details = (
-                    PronunciationVariant(
-                        pronunciation=normalized.pronunciation,
-                        source_pronunciation=normalized.source_pronunciation,
-                        language_markers=normalized.language_markers,
-                    ),
-                )
-                return PronunciationToken(
-                    text=token,
-                    pronunciation=normalized.pronunciation,
-                    source="espeak" if isinstance(self.fallback, EspeakFallback) else "fallback",
-                    source_encoding="ipa",
-                    variants=(normalized.pronunciation,),
-                    selector_tag=tag,
-                    variant_details=variant_details,
-                )
+        return None
+
+    def lookup(self, token: str, *, tag: str | None = None) -> PronunciationToken:
+        """Look up lexicon evidence first, then use the configured fallback."""
+        self._ensure_open()
+        lexical = self.lookup_lexicon(token, tag=tag)
+        if lexical is not None:
+            return lexical
+        fallback = self._lookup_fallback(token)
+        if fallback is not None:
+            return self._fallback_token(token, tag, fallback)
         return PronunciationToken(
             text=token, pronunciation=None, source="unknown", selector_tag=tag
+        )
+
+    def lookup_many(
+        self,
+        tokens: Sequence[str],
+        *,
+        tag: str | None = None,
+    ) -> tuple[PronunciationToken, ...]:
+        """Look up tokens with one batch call to fallback providers when available."""
+        self._ensure_open()
+        values = tuple(tokens)
+        results: list[PronunciationToken | None] = [
+            self.lookup_lexicon(token, tag=tag) for token in values
+        ]
+        missing = tuple(index for index, result in enumerate(results) if result is None)
+        fallback = self._get_fallback()
+        if missing and fallback is not None:
+            batch = getattr(fallback, "phonemize_many", None)
+            try:
+                if callable(batch):
+                    raw_values = batch(tuple(values[index] for index in missing), self.language)
+                else:
+                    raw_values = tuple(
+                        fallback.phonemize(values[index], self.language) for index in missing
+                    )
+            except Exception:  # noqa: BLE001
+                raw_values = ()
+            if len(raw_values) == len(missing):
+                for index, raw_value in zip(missing, raw_values):
+                    normalized = self._coerce_fallback_value(fallback, raw_value)
+                    if normalized is not None:
+                        results[index] = self._fallback_token(values[index], tag, normalized)
+        return tuple(
+            result
+            if result is not None
+            else PronunciationToken(
+                text=values[index], pronunciation=None, source="unknown", selector_tag=tag
+            )
+            for index, result in enumerate(results)
         )
 
     def lookup_prefixes(

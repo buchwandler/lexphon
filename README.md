@@ -64,7 +64,7 @@ lexphon -v de-DE --lexicon de-de:crane --tag DET "die"
 lexphon -v en-US --lexicon en-us:cmudict --json "read"
 ```
 
-JSON output contains the rendered IPA plus structured token fields: original text, pronunciation, source category, output alphabet, source encoding, logical lexicon ID, matched key, ordered IPA variants, selector tag, known status, and punctuation status.
+JSON output contains the rendered IPA plus structured token fields: original text, pronunciation, source category, provider, output alphabet, source encoding, logical lexicon ID, matched key, ordered IPA variants, selector tag, known status, punctuation status, and provenance metadata.
 
 Inline language-control markers recognized in IPA source notation are consumed at the Lexphon normalization boundary. They are removed from `pronunciation` and `variants`, while `source_pronunciation`, `language_markers`, and `variant_details` preserve the source and structured marker metadata for diagnostics and optional downstream routing.
 
@@ -97,6 +97,10 @@ with Phonemizer(
 
 `PronunciationToken.pronunciation` and `.variants` contain clean normalized IPA only. `source_pronunciation`, `.language_markers`, and `.variant_details` retain the raw source notation and per-variant provenance. Downstream adapters should consume the structured metadata and must not search returned pronunciations for raw tags such as `(en)` or `(de)`.
 
+`lookup_lexicon(token, tag=...)` searches only lexicons and returns `None` on a miss, so it is safe for lexical evidence and language routing. `lookup(token, tag=...)` searches the lexicons first and then invokes the configured generic fallback. Configure `fallback=None`, `fallback="espeak"`, `fallback="goruut"`, or a custom fallback object.
+
+For example, a provider result such as `(en)fˈIl(de)` is returned as clean `fˈIl` while retaining `source="fallback"`, `provider="espeak"`, the raw `source_pronunciation`, and markers `en@0` and `de@4`.
+
 ## KokoroG2P boundary
 
-KokoroG2P should import Lexphon's Python API, use `fallback=None`, convert returned IPA using its model-specific vocabulary, and apply its own fallback, stress, ratings, and diagnostics policy. Lexphon does not import KokoroG2P, perform Kokoro validation, or download dictionaries during phonemization.
+KokoroG2P should import Lexphon's Python API, configure the generic fallback policy it needs, convert returned IPA using its model-specific vocabulary, and apply its own stress, ratings, and diagnostics policy. Lexphon does not import KokoroG2P, perform Kokoro validation, or download dictionaries during phonemization.

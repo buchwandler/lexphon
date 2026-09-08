@@ -265,7 +265,7 @@ def _build_phonemize_parser(*, prog: str) -> argparse.ArgumentParser:
         "--lexicon", action="append", dest="lexicons", help="installed lexicon ID; repeatable"
     )
     parser.add_argument("--tag", help="selector tag for tagged G2Lex values")
-    parser.add_argument("--fallback", choices=["none", "espeak"], default="none")
+    parser.add_argument("--fallback", choices=["none", "espeak", "goruut"], default="none")
     parser.add_argument("--unknown", choices=["error", "keep", "skip"], default="error")
     parser.add_argument("--punctuation", choices=["keep", "drop"], default="keep")
     parser.add_argument("--json", action="store_true")
@@ -302,6 +302,7 @@ def _phonemize_main(argv: list[str], *, prog: str = "lexphon") -> int:
                                 "original_token": token.text,
                                 "pronunciation": token.pronunciation,
                                 "source": token.source,
+                                "provider": token.provider,
                                 "alphabet": token.alphabet,
                                 "known": token.known,
                                 "lexicon_id": token.lexicon_id,

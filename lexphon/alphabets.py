@@ -55,8 +55,6 @@ _ARPA_VOWELS = {
 }
 _ARPA_TOKEN = re.compile(r"^(?P<phoneme>[A-Z]+)(?P<stress>[012])?$")
 
-_LANGUAGE_MARKER = re.compile(r"\((?P<language>[A-Za-z]{2,3}(?:[-_][A-Za-z0-9]{1,8})*)\)")
-
 
 @dataclass(frozen=True, slots=True)
 class NormalizedPronunciation:
@@ -66,27 +64,13 @@ class NormalizedPronunciation:
 
 
 def _normalize_ipa(value: str) -> NormalizedPronunciation:
-    parts: list[str] = []
-    markers: list[PronunciationLanguageMarker] = []
-    position = 0
+    from .pronunciation import parse_pronunciation_controls
 
-    for match in _LANGUAGE_MARKER.finditer(value):
-        segment = unicodedata.normalize("NFC", value[position : match.start()])
-        parts.append(segment)
-        markers.append(
-            PronunciationLanguageMarker(
-                language=match.group("language").casefold().replace("_", "-"),
-                ipa_offset=sum(len(part) for part in parts),
-            )
-        )
-        position = match.end()
-
-    parts.append(unicodedata.normalize("NFC", value[position:]))
-    pronunciation = unicodedata.normalize("NFC", "".join(parts))
+    parsed = parse_pronunciation_controls(value)
     return NormalizedPronunciation(
-        pronunciation=pronunciation,
+        pronunciation=parsed.pronunciation,
         source_pronunciation=value,
-        language_markers=tuple(markers),
+        language_markers=parsed.language_markers,
     )
 
 
