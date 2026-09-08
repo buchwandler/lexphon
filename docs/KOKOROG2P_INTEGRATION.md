@@ -13,7 +13,7 @@ KokoroG2P should import Lexphon's Python API. It should not spawn the CLI in its
 Install the desired Lexphon assets explicitly before starting an offline application:
 
 ```bash
-python -m pip install "lexphon>=0.1.3,<0.2"
+python -m pip install "lexphon>=0.2.0,<0.3"
 lexphon data install de-de:gold
 lexphon data verify de-de:gold
 ```
@@ -21,13 +21,12 @@ lexphon data verify de-de:gold
 Runtime code should open an installed local store without downloading data:
 
 ```python
-from lexphon import DataStore, Phonemizer
+from lexphon import Phonemizer
 
 engine = Phonemizer(
     "de-DE",
     lexicons=["de-de:gold"],
-    store=DataStore(),
-    fallback=None,
+    fallback="espeak",
 )
 ```
 
@@ -37,14 +36,14 @@ Data versions and the Lexphon Python package version are independent. Deployment
 
 Lexphon exposes two lookup modes:
 
-- `lookup_lexicon(token, tag=...)` searches only configured lexicon layers. Use this method for lexical evidence and language routing. A miss returns `None` and cannot invoke a fallback provider.
-- `lookup(token, tag=...)` first performs the lexicon lookup, then invokes the configured Lexphon fallback after a miss. With `fallback=None`, an unknown token remains explicit.
+- `lookup_lexicon(token, tag=...)` searches only configured lexicon layers. Use this method for lexical evidence and language routing. A miss returns `None` and cannot invoke a provider.
+- `lookup(token, tag=...)` first performs the lexicon lookup, then invokes the configured provider after a miss. With `fallback=None`, an unknown token returns `None`.
 
-KokoroG2P may configure Lexphon with `fallback="espeak"`, `fallback="goruut"`, or a custom generic provider when that is the desired application policy. Fallback is never lexical evidence. Lexphon returns clean generic IPA and structured source/provider provenance; KokoroG2P converts the pronunciation to its model vocabulary and applies model-specific policy.
+KokoroG2P may configure Lexphon with `fallback="espeak"`, `fallback="goruut"`, or a custom `PronunciationProvider`. Provider output is never lexical evidence. Lexphon returns clean generic IPA, structured variants, provider provenance, and `requested_language`; KokoroG2P converts the pronunciation to its model vocabulary and applies model-specific policy.
 
 Preserve Kokoro-specific ratings, stress controls, punctuation handling, offsets, diagnostics, and vocabulary validation in KokoroG2P.
 
-Lexphon results are structured. Each token provides the original text, IPA pronunciation, source category, provider, output alphabet, logical lexicon ID, matched key, source encoding, ordered IPA variants, selector tag, known status, punctuation status, and pronunciation provenance. The first variant is primary, but later variants remain available to the application.
+Lexphon results are structured. Each token provides the original text, derived primary IPA pronunciation, source category, provider, requested language, logical lexicon ID, matched key, source encoding, structured variants, selector tag, known status, punctuation status, and pronunciation provenance.
 
 Lexphon's pronunciation normalization handoff is:
 
@@ -73,6 +72,6 @@ English CMUdict is selected explicitly with `en-us:cmudict`; it does not replace
 
 ## Ownership boundary
 
-`g2lex-data` obtains, transforms, validates, licenses, reproduces, and publishes generic pronunciation data. G2Lex stores and queries that data. Lexphon installs, verifies, selects, normalizes, and generically fallback-phonemizes already-published assets. KokoroG2P owns text preparation, token spans, POS mapping, IPA-to-Kokoro conversion, model validation, stress, ratings, and model-specific fallback policy.
+`g2lex-data` obtains, transforms, validates, licenses, reproduces, and publishes generic pronunciation data. G2Lex stores and queries that data. Lexphon installs, verifies, selects, normalizes, and provides optional generic pronunciation providers for already-published assets. KokoroG2P owns text preparation, token spans, POS mapping, IPA-to-Kokoro conversion, model validation, stress, ratings, and model-specific policy.
 
 Lexphon performs no catalog lookup or dictionary download during construction or phonemization. It does not import KokoroG2P, return Kokoro phonemes, validate the Kokoro inventory, apply model ratings, or decide model-specific stress and fallback behavior. Lexphon must never contain production dictionary source acquisition or G2Lex build recipes.

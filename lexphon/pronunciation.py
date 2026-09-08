@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 import unicodedata
 
+from .language import normalize_language_tag
 from .models import PronunciationLanguageMarker, PronunciationVariant
 
 _LANGUAGE_TAG = re.compile(r"[A-Za-z]{2,3}(?:[-_][A-Za-z0-9]{2,8})*")
@@ -25,10 +26,10 @@ def _marker_end(source: str, start: int) -> tuple[int, str] | None:
     )
     if _LANGUAGE_TAG.fullmatch(candidate) is None:
         return None
-    return end + 1, candidate.casefold().replace("_", "-")
+    return end + 1, normalize_language_tag(candidate)
 
 
-def strip_language_controls(
+def _strip_language_controls(
     source: str,
 ) -> tuple[str, tuple[PronunciationLanguageMarker, ...]]:
     """Remove confidently recognized provider language controls in one scan.
@@ -82,7 +83,7 @@ def parse_pronunciation_controls(source: str) -> PronunciationVariant:
     """Parse provider controls and return clean IPA plus source provenance."""
     if not isinstance(source, str):
         raise TypeError("pronunciation source must be a string")
-    pronunciation, markers = strip_language_controls(source)
+    pronunciation, markers = _strip_language_controls(source)
     return PronunciationVariant(
         pronunciation=pronunciation,
         source_pronunciation=source,

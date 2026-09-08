@@ -210,11 +210,11 @@ def test_layer_order_selectors_and_variants(release: Path, tmp_path: Path) -> No
         assert engine.lookup("Haus").pronunciation == "gold"
         assert engine.lookup("Mädchen").pronunciation == "mɛːtçən"
         assert engine.lookup("die", tag="DET").pronunciation == "deː"
-        assert engine.lookup("die").variants == ("diː",)
+        assert [variant.pronunciation for variant in engine.lookup("die").variants] == ["diː"]
     with Phonemizer("en-US", lexicons=["en-us:cmudict"], store=store) as engine:
         result = engine.lookup("read")
         assert result.pronunciation == "ˈɹid"
-        assert result.variants == ("ˈɹid", "ˈɹɛd")
+        assert [variant.pronunciation for variant in result.variants] == ["ˈɹid", "ˈɹɛd"]
 
 
 def test_annotated_production_lookup_and_rendering(release: Path, tmp_path: Path) -> None:
@@ -249,9 +249,9 @@ def test_german_direct_lookup_parity(release: Path, tmp_path: Path) -> None:
             result = engine.lookup(word)
         assert result.lexicon_id == identifier
         assert result.matched_key == matched
-        assert result.variants == tuple(
+        assert [variant.pronunciation for variant in result.variants] == [
             to_ipa(value, artifact.phoneme_encoding) for value in raw_variants
-        )
+        ]
         assert result.source_encoding == artifact.phoneme_encoding
 
 
@@ -286,7 +286,8 @@ def test_cli_info_and_structured_json(
     assert (
         main(
             [
-                "-v",
+                "phonemize",
+                "--language",
                 "en-US",
                 "--data-home",
                 str(store.root),
@@ -299,6 +300,7 @@ def test_cli_info_and_structured_json(
         == 0
     )
     payload = json.loads(capsys.readouterr().out)
+    assert payload["schema_version"] == 2
     assert payload["tokens"][0]["source_encoding"] == "arpabet"
     assert payload["tokens"][0]["lexicon_id"] == "en-us:cmudict"
 
@@ -313,7 +315,8 @@ def test_cli_json_and_plain_output_use_clean_annotated_ipa(
     assert (
         main(
             [
-                "-v",
+                "phonemize",
+                "--language",
                 "de-DE",
                 "--data-home",
                 str(store.root),
@@ -328,18 +331,19 @@ def test_cli_json_and_plain_output_use_clean_annotated_ipa(
     payload = json.loads(capsys.readouterr().out)
     token = payload["tokens"][0]
     assert token["pronunciation"] == "dˈaʊnləʊdən"
-    assert token["variants"] == ["dˈaʊnləʊdən"]
+    assert token["variants"][0]["pronunciation"] == "dˈaʊnləʊdən"
     assert token["source_pronunciation"] == "(en)dˈaʊnləʊdən(de)"
     assert token["language_markers"] == [
         {"language": "en", "ipa_offset": 0},
         {"language": "de", "ipa_offset": len("dˈaʊnləʊdən")},
     ]
-    assert token["variant_details"][0]["language_markers"] == token["language_markers"]
+    assert token["variants"][0]["language_markers"] == token["language_markers"]
 
     assert (
         main(
             [
-                "-v",
+                "phonemize",
+                "--language",
                 "de-DE",
                 "--data-home",
                 str(store.root),
@@ -489,6 +493,9 @@ def test_fallback_pronunciation_is_nfc(release: Path, tmp_path: Path) -> None:
     store.install(artifact)
 
     class DecomposedFallback:
+        name = "decomposed"
+        source_encoding = "ipa"
+
         def phonemize(self, text: str, language: str) -> str:
             return "e\u0301"
 
@@ -501,7 +508,7 @@ def test_fallback_pronunciation_is_nfc(release: Path, tmp_path: Path) -> None:
         token = engine.lookup("missing", tag="NOUN")
     assert token.pronunciation == "é"
     assert token.pronunciation == unicodedata.normalize("NFC", token.pronunciation or "")
-    assert token.variants == ("é",)
+    assert token.variants[0].pronunciation == "é"
 
 
 def test_manifest_download_404_has_structured_context(
@@ -667,43 +674,31 @@ def test_cli_download_404_is_actionable(
     )
 
 
-def test_explicit_and_legacy_phonemize_forms_match(
+def test_explicit_phonemize_form_is_supported_and_legacy_form_is_rejected(
     release: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     catalog = load_catalog(str(release))
     store = DataStore(tmp_path / "store")
     store.install(catalog.artifact("en-us:cmudict"))
 
-    legacy = main(
-        [
-            "-v",
-            "en-US",
-            "--data-home",
-            str(store.root),
-            "--lexicon",
-            "en-us:cmudict",
-            "hello",
-        ]
+    assert (
+        main(
+            [
+                "phonemize",
+                "--language",
+                "en-US",
+                "--data-home",
+                str(store.root),
+                "--lexicon",
+                "en-us:cmudict",
+                "hello",
+            ]
+        )
+        == 0
     )
-    legacy_output = capsys.readouterr().out
-    explicit = main(
-        [
-            "phonemize",
-            "--language",
-            "en-US",
-            "--data-home",
-            str(store.root),
-            "--lexicon",
-            "en-us:cmudict",
-            "hello",
-        ]
-    )
-    assert legacy == explicit == 0
-    assert legacy_output == capsys.readouterr().out
+    assert capsys.readouterr().out == "həˈloʊ\n"
 
-
-def test_languages_and_voices_are_compatible(capsys: pytest.CaptureFixture[str]) -> None:
-    assert main(["languages"]) == 0
-    languages = capsys.readouterr().out
-    assert main(["voices"]) == 0
-    assert languages == capsys.readouterr().out
+    with pytest.raises(SystemExit):
+        main(["-v", "en-US", "hello"])
+    with pytest.raises(SystemExit):
+        main(["voices"])

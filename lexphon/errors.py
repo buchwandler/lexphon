@@ -52,3 +52,19 @@ class UnsupportedAlphabetError(LexphonError):
 
 class UnknownWordError(LexphonError):
     """A token has no pronunciation and the caller requested strict handling."""
+
+
+class ProviderError(LexphonError):
+    """Base error for configured pronunciation provider failures."""
+
+
+class ProviderUnavailableError(ProviderError):
+    """The requested provider runtime or dependency is unavailable."""
+
+
+class ProviderExecutionError(ProviderError):
+    """A provider invocation failed."""
+
+
+class ProviderOutputError(ProviderError):
+    """A provider returned output that violates its declared contract."""

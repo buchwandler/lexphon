@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 
 from lexphon import PronunciationLanguageMarker, PronunciationVariant
-from lexphon.pronunciation import parse_pronunciation_controls, strip_language_controls
+from lexphon.pronunciation import _strip_language_controls, parse_pronunciation_controls
 
 
 @pytest.mark.parametrize(
@@ -35,7 +35,7 @@ def test_parse_provider_controls(
 def test_controls_accept_hidden_unicode_format_characters() -> None:
     source = "\u2068(en)\u2069fˈIl\u2068(de)\u2069"
 
-    clean, markers = strip_language_controls(source)
+    clean, markers = _strip_language_controls(source)
 
     assert clean == "fˈIl"
     assert markers == (

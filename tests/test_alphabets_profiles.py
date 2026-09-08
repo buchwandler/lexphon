@@ -95,6 +95,6 @@ def test_profile_candidates_without_unicode_normalization() -> None:
 def test_profile_registry_returns_generic_profile_for_unknown_language() -> None:
     profile = ProfileRegistry(()).resolve("xx_YY")
 
-    assert profile.language == "xx_YY"
+    assert profile.language == "xx-yy"
     assert profile.default_lexicons == ()
     assert profile.case_candidates == ("exact", "lower", "title")

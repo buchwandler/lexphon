@@ -181,25 +181,25 @@ def test_annotated_lookup_preserves_clean_and_structured_provenance(tmp_path: Pa
         assert token.lexicon_id == "de-de:demo"
         assert token.source_encoding == "ipa"
         assert token.pronunciation == "dˈaʊnləʊdən"
-        assert token.variants == ("dˈaʊnləʊdən",)
+        assert token.variants[0].pronunciation == "dˈaʊnləʊdən"
         assert token.source_pronunciation == "(en)dˈaʊnləʊdən(de)"
         assert tuple(marker.language for marker in token.language_markers) == ("en", "de")
-        assert token.variant_details[0].source_pronunciation == token.source_pronunciation
+        assert token.variants[0].source_pronunciation == token.source_pronunciation
 
         demo = engine.lookup("demo")
-        assert demo.variants == ("dɛmo", "deːmo")
-        assert tuple(marker.language for marker in demo.variant_details[0].language_markers) == (
+        assert [variant.pronunciation for variant in demo.variants] == ["dɛmo", "deːmo"]
+        assert tuple(marker.language for marker in demo.variants[0].language_markers) == (
             "en",
             "de",
         )
-        assert demo.variant_details[1].language_markers == ()
+        assert demo.variants[1].language_markers == ()
 
         exact = engine.lookup("download")
         prefix = engine.lookup_prefixes("download!")[0]
         assert exact.pronunciation == prefix.pronunciation
         assert exact.source_pronunciation == prefix.source_pronunciation
         assert exact.language_markers == prefix.language_markers
-        assert exact.variant_details == prefix.variant_details
+        assert exact.variants == prefix.variants
 
 
 def test_prefix_lookup_is_structured_and_longest_first(tmp_path: Path) -> None:
@@ -210,7 +210,7 @@ def test_prefix_lookup_is_structured_and_longest_first(tmp_path: Path) -> None:
         assert matches[0].text == "Haus"
         assert matches[0].lexicon_id == "de-de:demo"
         assert matches[0].source_encoding == "ipa"
-        assert matches[0].variants == ("haʊ̯s",)
+        assert [variant.pronunciation for variant in matches[0].variants] == ["haʊ̯s"]
         assert engine.lookup_prefixes("xHaus", position=1)[0].matched_key == "Haus"
         assert engine.lookup_prefixes("missing") == ()
 
@@ -222,7 +222,7 @@ def test_arpabet_is_normalized_to_ipa_and_variants_survive(tmp_path: Path) -> No
         hello = engine.lookup("Hello")
         assert hello.pronunciation == "həˈloʊ"
         read = engine.lookup("read")
-        assert read.variants == ("ˈɹid", "ˈɹɛd")
+        assert [variant.pronunciation for variant in read.variants] == ["ˈɹid", "ˈɹɛd"]
 
 
 def test_unknowns_remain_visible_for_kokorog2p_fallback(tmp_path: Path) -> None:
@@ -235,6 +235,9 @@ def test_unknowns_remain_visible_for_kokorog2p_fallback(tmp_path: Path) -> None:
 
 
 class _FakeFallback:
+    name = "fake"
+    source_encoding = "ipa"
+
     def phonemize(self, text: str, language: str) -> str | None:
         return "fəˈbæk" if text == "Quux" else None
 
@@ -245,7 +248,7 @@ def test_optional_fallback_is_generic_and_explicit(tmp_path: Path) -> None:
         "de-DE", lexicons=["de-de:demo"], store=store, fallback=_FakeFallback()
     ) as engine:
         token = engine.lookup("Quux")
-        assert token.source == "fallback"
+        assert token.source == "provider"
         assert token.pronunciation == "fəˈbæk"
 
 

@@ -2,10 +2,9 @@ from __future__ import annotations
 
 import re
 import unicodedata
-from dataclasses import dataclass
 
 from .errors import UnsupportedAlphabetError
-from .models import PronunciationLanguageMarker
+from .models import PronunciationVariant
 
 _ARPA_CONSONANTS = {
     "B": "b",
@@ -56,18 +55,11 @@ _ARPA_VOWELS = {
 _ARPA_TOKEN = re.compile(r"^(?P<phoneme>[A-Z]+)(?P<stress>[012])?$")
 
 
-@dataclass(frozen=True, slots=True)
-class NormalizedPronunciation:
-    pronunciation: str
-    source_pronunciation: str
-    language_markers: tuple[PronunciationLanguageMarker, ...] = ()
-
-
-def _normalize_ipa(value: str) -> NormalizedPronunciation:
+def _normalize_ipa(value: str) -> PronunciationVariant:
     from .pronunciation import parse_pronunciation_controls
 
     parsed = parse_pronunciation_controls(value)
-    return NormalizedPronunciation(
+    return PronunciationVariant(
         pronunciation=parsed.pronunciation,
         source_pronunciation=value,
         language_markers=parsed.language_markers,
@@ -118,14 +110,14 @@ def arpabet_to_ipa(value: str) -> str:
     return unicodedata.normalize("NFC", "".join(output))
 
 
-def normalize_pronunciation(value: str, encoding: str) -> NormalizedPronunciation:
+def normalize_pronunciation(value: str, encoding: str) -> PronunciationVariant:
     if not isinstance(value, str) or not value:
         raise UnsupportedAlphabetError("pronunciation must be a non-empty string")
     key = encoding.casefold().replace("-", "")
     if key in {"ipa", "unicodeipa"}:
         return _normalize_ipa(value)
     if key in {"arpabet", "cmu", "cmudict"}:
-        return NormalizedPronunciation(
+        return PronunciationVariant(
             pronunciation=arpabet_to_ipa(value),
             source_pronunciation=value,
         )

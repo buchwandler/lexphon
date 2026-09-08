@@ -10,6 +10,7 @@ try:
 except ModuleNotFoundError:  # pragma: no cover
     import tomli as tomllib  # type: ignore[no-redef]
 
+from .language import normalize_language_tag
 
 _APOSTROPHE_MAP = str.maketrans(
     {
@@ -86,13 +87,13 @@ class ProfileRegistry:
         return tuple(result)
 
     def resolve(self, language: str) -> LanguageProfile:
-        key = language.casefold().replace("_", "-")
+        key = normalize_language_tag(language)
         for profile in self.profiles:
             names = (profile.language, *profile.aliases)
-            if key in {name.casefold().replace("_", "-") for name in names}:
+            if key in {normalize_language_tag(name) for name in names}:
                 return profile
         return LanguageProfile(
-            language=language,
+            language=key,
             aliases=(),
             default_lexicons=(),
             case_candidates=("exact", "lower", "title"),

@@ -58,23 +58,21 @@ Data release versions and the Lexphon Python package version are independent. Pi
 lexphon --help
 lexphon languages
 lexphon phonemize --language de-DE "Die Leute kommen."
-lexphon -v de-DE "Die Leute kommen."
-lexphon -v de-DE --lexicon de-de:crane "Die Leute kommen."
-lexphon -v de-DE --lexicon de-de:crane --tag DET "die"
-lexphon -v en-US --lexicon en-us:cmudict --json "read"
+lexphon phonemize --language de-DE --lexicon de-de:crane "Die Leute kommen."
+lexphon phonemize --language de-DE --lexicon de-de:crane --tag DET "die"
+lexphon phonemize --language en-US --lexicon en-us:cmudict --json "read"
 ```
 
-JSON output contains the rendered IPA plus structured token fields: original text, pronunciation, source category, provider, output alphabet, source encoding, logical lexicon ID, matched key, ordered IPA variants, selector tag, known status, punctuation status, and provenance metadata.
+JSON output has `schema_version: 2` and contains the rendered IPA plus structured token fields: text, pronunciation, source category, provider, requested language, source encoding, logical lexicon ID, matched key, structured variants, selector tag, known status, punctuation status, and provenance metadata.
 
-Inline language-control markers recognized in IPA source notation are consumed at the Lexphon normalization boundary. They are removed from `pronunciation` and `variants`, while `source_pronunciation`, `language_markers`, and `variant_details` preserve the source and structured marker metadata for diagnostics and optional downstream routing.
-
-Optional standalone fallback is explicit:
+Inline language-control markers recognized in IPA source notation are consumed once at the Lexphon normalization boundary. They are removed from `pronunciation` and each variant pronunciation, while `source_pronunciation` and structured `language_markers` preserve the raw source and marker metadata for diagnostics and optional downstream routing.
+Optional generic provider use is explicit:
 
 ```bash
-lexphon -v de-DE --fallback espeak "unbekannteswort"
+lexphon phonemize --language de-DE --fallback espeak "unbekannteswort"
 ```
 
-Fallback is disabled by default. Unknown tokens remain visible to downstream applications.
+Providers are disabled by default. Unknown tokens remain visible to downstream applications.
 
 ## Python API
 
@@ -94,13 +92,14 @@ with Phonemizer(
 ```
 
 `phonemize_tokens()` is the integration API. It preserves token-level provenance, selectors, variants, punctuation, and unknown words. IPA is normalized to Unicode NFC. ARPABET and CMU-style pronunciations are converted deterministically to IPA. Unsupported alphabets and invalid pronunciation tokens raise stable Lexphon exceptions.
+`phonemize_tokens()` is the integration API. It preserves token-level provenance, selectors, structured variants, punctuation, and unknown words. IPA is normalized to Unicode NFC. ARPABET and CMU-style pronunciations are converted deterministically to IPA. Unsupported alphabets and invalid pronunciation tokens raise stable Lexphon exceptions.
 
-`PronunciationToken.pronunciation` and `.variants` contain clean normalized IPA only. `source_pronunciation`, `.language_markers`, and `.variant_details` retain the raw source notation and per-variant provenance. Downstream adapters should consume the structured metadata and must not search returned pronunciations for raw tags such as `(en)` or `(de)`.
+`PronunciationToken.pronunciation` is derived from the first structured variant. `source_pronunciation` and `language_markers` expose its raw source notation and provenance. Downstream adapters should consume this metadata and must not search returned pronunciations for raw tags such as `(en)` or `(de)`.
 
-`lookup_lexicon(token, tag=...)` searches only lexicons and returns `None` on a miss, so it is safe for lexical evidence and language routing. `lookup(token, tag=...)` searches the lexicons first and then invokes the configured generic fallback. Configure `fallback=None`, `fallback="espeak"`, `fallback="goruut"`, or a custom fallback object.
+`lookup_lexicon(token, tag=...)` searches only lexicons and returns `None` on a miss, so it is safe for lexical evidence and language routing. `lookup(token, tag=...)` searches the lexicons first and then invokes the configured generic provider. Configure `fallback=None`, `fallback="espeak"`, `fallback="goruut"`, or a custom `PronunciationProvider`.
 
-For example, a provider result such as `(en)fˈIl(de)` is returned as clean `fˈIl` while retaining `source="fallback"`, `provider="espeak"`, the raw `source_pronunciation`, and markers `en@0` and `de@4`.
+For example, a provider result such as `(en)fˈIl(de)` is returned as clean `fˈIl` while retaining `source="provider"`, `provider="espeak"`, `requested_language="de-de"`, the raw `source_pronunciation`, and markers `en@0` and `de@4`.
 
 ## KokoroG2P boundary
 
-KokoroG2P should import Lexphon's Python API, configure the generic fallback policy it needs, convert returned IPA using its model-specific vocabulary, and apply its own stress, ratings, and diagnostics policy. Lexphon does not import KokoroG2P, perform Kokoro validation, or download dictionaries during phonemization.
+KokoroG2P should import Lexphon's Python API and configure Lexphon's generic providers when needed. It converts returned IPA using its model-specific vocabulary and applies its own stress, ratings, and diagnostics policy. Lexphon does not import KokoroG2P, perform Kokoro validation, or download dictionaries during phonemization.

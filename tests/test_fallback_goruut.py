@@ -1,4 +1,7 @@
-from lexphon.fallback import GoruutFallback
+import pytest
+
+from lexphon.errors import ProviderExecutionError
+from lexphon.providers import GoruutProvider
 
 
 class FakeGoruut:
@@ -10,16 +13,17 @@ class FakeGoruut:
         return "(fr)bɔ̃(de)"
 
 
-def test_goruut_returns_clean_ipa_provenance() -> None:
+def test_goruut_provider_returns_raw_source_output() -> None:
     client = FakeGoruut()
-    result = GoruutFallback(client).phonemize("bonjour", "fr-FR")
-
-    assert result is not None
-    assert result.provider == "goruut"
-    assert result.pronunciation == "bɔ̃"
-    assert result.source_pronunciation == "(fr)bɔ̃(de)"
-    assert [(marker.language, marker.ipa_offset) for marker in result.language_markers] == [
-        ("fr", 0),
-        ("de", 3),
-    ]
+    result = GoruutProvider(client).phonemize("bonjour", "fr-FR")
+    assert result == "(fr)bɔ̃(de)"
     assert client.calls == [("fr-FR", "bonjour")]
+
+
+def test_goruut_provider_execution_failure_is_explicit() -> None:
+    class FailingClient:
+        def phonemize(self, **kwargs: str) -> str:
+            raise RuntimeError("broken")
+
+    with pytest.raises(ProviderExecutionError, match="execution failed"):
+        GoruutProvider(FailingClient()).phonemize("bonjour", "fr-FR")

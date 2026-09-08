@@ -10,11 +10,11 @@ g2lex-data -> G2Lex -> Lexphon -> application adapters
 
 `g2lex-data` is the producer and publisher. It obtains, transforms, validates, licenses, reproduces, and publishes immutable generic pronunciation data releases. G2Lex is the storage primitive that represents, packs, opens, and queries typed lexicon data. Lexphon is the generic runtime consumer. KokoroG2P is a downstream model adapter.
 
-Lexphon owns catalog consumption, explicit verified installation, immutable local asset storage, language profiles, candidate generation, ordered layered lookup, selectors, pronunciation alphabet normalization, token provenance, CLI behavior, and optional generic fallback engines.
+Lexphon owns catalog consumption, explicit verified installation, immutable local asset storage, language profiles, candidate generation, ordered layered lookup, selectors, pronunciation alphabet normalization, token provenance, CLI behavior, and optional generic pronunciation providers.
 
-Lexphon owns generic fallback providers as well as lexicon pronunciation cleanup. eSpeak and Goruut return structured IPA provenance, including provider, requested provider language, raw source pronunciation, and removed language-control markers. Raw provider output never crosses the Lexphon boundary. No Kokoro vocabulary conversion or model-specific normalization occurs here.
+Lexphon owns generic pronunciation providers as well as lexicon pronunciation cleanup. eSpeak and Goruut return raw source pronunciation; Lexphon normalizes it once into clean IPA and structured provenance, including provider, requested provider language, raw source pronunciation, and removed language-control markers. No Kokoro vocabulary conversion or model-specific normalization occurs here.
 
-`Phonemizer.lookup_lexicon()` is the lexicon-evidence operation and never invokes fallback. `Phonemizer.lookup()` is the staged pronunciation operation: it first calls `lookup_lexicon()`, then invokes the configured generic fallback only after a lexicon miss. Fallback results use `source="fallback"` and identify the provider separately.
+`Phonemizer.lookup_lexicon()` is the lexicon-evidence operation and never invokes a provider. `Phonemizer.lookup()` is the staged pronunciation operation: it first calls `lookup_lexicon()`, then invokes the configured provider only after a lexicon miss. Provider results use `source="provider"` and identify the provider separately.
 Lexphon does not own source acquisition, dataset transformations, licensing transformations, production dictionary build recipes, Kokoro vocabulary, Kokoro stress or rating policy, or hidden downloads. Lexphon must never contain source acquisition or G2Lex build recipes for production dictionaries.
 
 ## Catalog and installation
@@ -46,21 +46,25 @@ Selected layers are searched in caller order. Within each layer, profile-ordered
 
 The public result alphabet is IPA and every non-null pronunciation is Unicode NFC. ARPABET is converted with deterministic phone and primary or secondary stress rules. Unknown phones and unsupported encodings raise `UnsupportedAlphabetError`. Lexphon also consumes recognized inline language-control markers in IPA source notation at this boundary. The marker text is removed from public IPA and preserved as `PronunciationLanguageMarker` metadata with offsets into the cleaned IPA.
 
-Structured tokens preserve the original token, selected pronunciation, source category, logical lexicon, matched key, source encoding, ordered IPA variants, selector context, punctuation state, and pronunciation provenance. `PronunciationToken.pronunciation` and `.variants` contain clean IPA. `source_pronunciation`, `language_markers`, and `variant_details` preserve raw source notation and per-variant metadata. Unknown words remain explicit when fallback is disabled.
+Structured tokens preserve the original token, selected pronunciation, source category, logical lexicon, matched key, source encoding, structured variants, selector context, provider and requested language, punctuation state, and pronunciation provenance. `PronunciationToken.pronunciation`, `source_pronunciation`, and `language_markers` derive from the first variant. Unknown words remain explicit when no provider returns a pronunciation.
 
 ## KokoroG2P integration
 
 KokoroG2P should import the Lexphon Python API, not spawn the CLI:
 
 ```python
-from lexphon import DataStore, Phonemizer
+from lexphon import Phonemizer
 
 engine = Phonemizer(
     "de-DE",
     lexicons=["de-de:gold"],
-    store=DataStore(),
-    fallback=None,
+    fallback="espeak",
 )
+
+lexical = engine.lookup_lexicon("File")
+actual = engine.lookup("File")
 ```
 
-KokoroG2P converts generic Lexphon IPA to its model vocabulary and applies its own fallback, ratings, stress, and compatibility policy. Lexphon remains independent of KokoroG2P and does not validate or rewrite the Kokoro inventory.
+`lexical` is routing evidence. `actual` is the pronunciation result. A provider result has `source="provider"`, while a lexical result has `source="lexicon"`.
+
+KokoroG2P converts generic Lexphon IPA to its model vocabulary and applies model-specific ratings, stress, and compatibility policy. Lexphon remains independent of KokoroG2P and does not validate or rewrite the Kokoro inventory.

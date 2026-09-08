@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from ._version import __version__
+from .alphabets import normalize_pronunciation
 from .engine import Phonemizer
 from .errors import (
     CatalogError,
@@ -11,38 +12,56 @@ from .errors import (
     LexiconNotInstalledError,
     LexiconNotUsableError,
     LexphonError,
+    ProviderError,
+    ProviderExecutionError,
+    ProviderOutputError,
+    ProviderUnavailableError,
     UnknownWordError,
     UnsupportedAlphabetError,
 )
-from .fallback import EspeakFallback, FallbackPronunciation, GoruutFallback
+from .language import normalize_language_tag
 from .models import (
     PhonemizationResult,
     PronunciationLanguageMarker,
+    PronunciationSource,
     PronunciationToken,
     PronunciationVariant,
 )
-from .pronunciation import parse_pronunciation_controls, strip_language_controls
+from .providers import (
+    BatchPronunciationProvider,
+    EspeakProvider,
+    GoruutProvider,
+    PronunciationProvider,
+    create_provider,
+)
 from .store import DataStore
 
 __all__ = [
+    "BatchPronunciationProvider",
     "CatalogError",
     "DataDownloadError",
     "DataIntegrityError",
     "DataStore",
-    "EspeakFallback",
-    "FallbackPronunciation",
-    "GoruutFallback",
+    "EspeakProvider",
+    "GoruutProvider",
     "LexiconNotInstalledError",
     "LexiconNotUsableError",
     "LexphonError",
     "PhonemizationResult",
     "Phonemizer",
     "PronunciationLanguageMarker",
+    "PronunciationProvider",
+    "PronunciationSource",
     "PronunciationToken",
     "PronunciationVariant",
+    "ProviderError",
+    "ProviderExecutionError",
+    "ProviderOutputError",
+    "ProviderUnavailableError",
     "UnknownWordError",
     "UnsupportedAlphabetError",
     "__version__",
-    "parse_pronunciation_controls",
-    "strip_language_controls",
+    "create_provider",
+    "normalize_language_tag",
+    "normalize_pronunciation",
 ]

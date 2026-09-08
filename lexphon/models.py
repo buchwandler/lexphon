@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Literal
 
 from .errors import UnknownWordError
+
+PronunciationSource = Literal["lexicon", "provider", "unknown", "literal"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -14,40 +17,38 @@ class PronunciationLanguageMarker:
 @dataclass(frozen=True, slots=True)
 class PronunciationVariant:
     pronunciation: str
-    source_pronunciation: str | None = None
+    source_pronunciation: str
     language_markers: tuple[PronunciationLanguageMarker, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
 class PronunciationToken:
     text: str
-    pronunciation: str | None
-    source: str
-    alphabet: str = "ipa"
+    source: PronunciationSource
+    variants: tuple[PronunciationVariant, ...] = ()
     lexicon_id: str | None = None
     matched_key: str | None = None
     source_encoding: str | None = None
-    variants: tuple[str, ...] = ()
     selector_tag: str | None = None
-    punctuation: bool = False
-    variant_details: tuple[PronunciationVariant, ...] = ()
     provider: str | None = None
+    requested_language: str | None = None
+    punctuation: bool = False
+
+    @property
+    def pronunciation(self) -> str | None:
+        return self.variants[0].pronunciation if self.variants else None
 
     @property
     def source_pronunciation(self) -> str | None:
-        if not self.variant_details:
-            return None
-        return self.variant_details[0].source_pronunciation
+        return self.variants[0].source_pronunciation if self.variants else None
 
     @property
     def language_markers(self) -> tuple[PronunciationLanguageMarker, ...]:
-        if not self.variant_details:
-            return ()
-        return self.variant_details[0].language_markers
+        return self.variants[0].language_markers if self.variants else ()
 
     @property
     def known(self) -> bool:
-        return self.pronunciation is not None
+        return bool(self.variants)
 
 
 @dataclass(frozen=True, slots=True)

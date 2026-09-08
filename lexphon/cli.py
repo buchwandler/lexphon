@@ -18,9 +18,6 @@ _ROOT_EPILOG = """examples:
   lexphon data install de-de:gold
   lexphon phonemize --language de-DE \"Die Leute kommen.\"
   lexphon languages
-
-compatibility:
-  The legacy form `lexphon -v de-DE \"Die Leute kommen.\"` is still accepted.
 """
 
 
@@ -240,11 +237,6 @@ def _languages_main() -> int:
     return 0
 
 
-def _voices_main() -> int:
-    """Compatibility alias for the historical voices command."""
-    return _languages_main()
-
-
 def _build_phonemize_parser(*, prog: str) -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog=prog,
@@ -254,12 +246,10 @@ def _build_phonemize_parser(*, prog: str) -> argparse.ArgumentParser:
     parser.add_argument(
         "-l",
         "--language",
-        "-v",
-        "--voice",
         dest="language",
         required=True,
         metavar="LANGUAGE",
-        help="language profile, for example de-DE (-v/--voice are compatibility aliases)",
+        help="language profile, for example de-DE",
     )
     parser.add_argument(
         "--lexicon", action="append", dest="lexicons", help="installed lexicon ID; repeatable"
@@ -291,6 +281,7 @@ def _phonemize_main(argv: list[str], *, prog: str = "lexphon") -> int:
             print(
                 json.dumps(
                     {
+                        "schema_version": 2,
                         "text": result.text,
                         "language": result.language,
                         "phonemes": result.render(
@@ -299,30 +290,16 @@ def _phonemize_main(argv: list[str], *, prog: str = "lexphon") -> int:
                         "tokens": [
                             {
                                 "text": token.text,
-                                "original_token": token.text,
-                                "pronunciation": token.pronunciation,
                                 "source": token.source,
                                 "provider": token.provider,
-                                "alphabet": token.alphabet,
-                                "known": token.known,
+                                "requested_language": token.requested_language,
                                 "lexicon_id": token.lexicon_id,
                                 "matched_key": token.matched_key,
                                 "source_encoding": token.source_encoding,
-                                "variants": list(token.variants),
-                                "variant_details": [
-                                    {
-                                        "pronunciation": detail.pronunciation,
-                                        "source_pronunciation": detail.source_pronunciation,
-                                        "language_markers": [
-                                            {
-                                                "language": marker.language,
-                                                "ipa_offset": marker.ipa_offset,
-                                            }
-                                            for marker in detail.language_markers
-                                        ],
-                                    }
-                                    for detail in token.variant_details
-                                ],
+                                "selector_tag": token.selector_tag,
+                                "known": token.known,
+                                "punctuation": token.punctuation,
+                                "pronunciation": token.pronunciation,
                                 "source_pronunciation": token.source_pronunciation,
                                 "language_markers": [
                                     {
@@ -331,8 +308,20 @@ def _phonemize_main(argv: list[str], *, prog: str = "lexphon") -> int:
                                     }
                                     for marker in token.language_markers
                                 ],
-                                "selector_tag": token.selector_tag,
-                                "punctuation": token.punctuation,
+                                "variants": [
+                                    {
+                                        "pronunciation": variant.pronunciation,
+                                        "source_pronunciation": variant.source_pronunciation,
+                                        "language_markers": [
+                                            {
+                                                "language": marker.language,
+                                                "ipa_offset": marker.ipa_offset,
+                                            }
+                                            for marker in variant.language_markers
+                                        ],
+                                    }
+                                    for variant in token.variants
+                                ],
                             }
                             for token in result.tokens
                         ],
@@ -359,9 +348,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _data_main(args[1:])
         if args[0] == "phonemize":
             return _phonemize_main(args[1:], prog="lexphon phonemize")
-        if args[0] in {"languages", "voices"}:
+        if args[0] == "languages":
             return _languages_main()
-        return _phonemize_main(args, prog="lexphon")
+        _build_root_parser().parse_args(args)
+        return 0
     except DataDownloadError as exc:
         _format_download_error(exc)
         return 2

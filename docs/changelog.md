@@ -1,5 +1,14 @@
 # Changelog
 
+## [v0.2.0] - Breaking API cleanup
+
+### Changed
+
+- Replaced fallback compatibility APIs with strict raw pronunciation providers and typed provider errors.
+- Made structured pronunciation variants authoritative and removed `variant_details` and `alphabet`.
+- Made direct lookup misses return `None`, added optional provider batching, and versioned CLI JSON as schema 2.
+- Updated the KokoroG2P handoff to Lexphon `>=0.2.0,<0.3`; generic eSpeak and Goruut provider ownership remains in Lexphon.
+
 ## [v0.1.3] - 2026-09-08
 
 ### Fixed

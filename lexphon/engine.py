@@ -8,11 +8,17 @@ from typing import Any
 import g2lex
 
 from .alphabets import normalize_pronunciation
-from .errors import LexiconNotUsableError, LexphonError, UnsupportedAlphabetError
-from .fallback import Fallback, FallbackPronunciation, create_fallback
+from .errors import (
+    LexiconNotUsableError,
+    ProviderError,
+    ProviderExecutionError,
+    ProviderOutputError,
+    UnsupportedAlphabetError,
+)
+from .language import normalize_language_tag
 from .models import PhonemizationResult, PronunciationToken, PronunciationVariant
 from .profiles import LanguageProfile, ProfileRegistry
-from .pronunciation import parse_pronunciation_controls
+from .providers import BatchPronunciationProvider, PronunciationProvider, create_provider
 from .store import DataStore
 from .tokenizer import tokenize
 
@@ -24,24 +30,11 @@ class _Layer:
     lexicon: Any
 
 
-def _normalize_language(language: object) -> str:
-    if not isinstance(language, str):
-        return ""
-    return language.casefold().replace("_", "-")
-
-
 def _normalize_variants(
     raw_variants: tuple[str, ...],
     encoding: str,
 ) -> tuple[PronunciationVariant, ...]:
-    return tuple(
-        PronunciationVariant(
-            pronunciation=result.pronunciation,
-            source_pronunciation=result.source_pronunciation,
-            language_markers=result.language_markers,
-        )
-        for result in (normalize_pronunciation(value, encoding) for value in raw_variants)
-    )
+    return tuple(normalize_pronunciation(value, encoding) for value in raw_variants)
 
 
 class Phonemizer:
@@ -54,11 +47,11 @@ class Phonemizer:
         lexicons: tuple[str, ...] | list[str] | None = None,
         store: DataStore | None = None,
         profiles: ProfileRegistry | None = None,
-        fallback: Fallback | str | None = None,
+        fallback: PronunciationProvider | str | None = None,
     ):
         self.store = store or DataStore()
         self.profile: LanguageProfile = (profiles or ProfileRegistry()).resolve(language)
-        self.language = self.profile.language
+        self.language = normalize_language_tag(self.profile.language)
         identifiers = tuple(lexicons) if lexicons is not None else self.profile.default_lexicons
         self.layers: list[_Layer] = []
         try:
@@ -69,8 +62,10 @@ class Phonemizer:
                     raise LexiconNotUsableError(
                         f"lexicon {identifier!r} has kind {kind!r}; only pronunciation lexica can be layers"
                     )
-                if _normalize_language(metadata.get("language")) != _normalize_language(
-                    self.profile.language
+                metadata_language = metadata.get("language")
+                if (
+                    not isinstance(metadata_language, str)
+                    or normalize_language_tag(metadata_language) != self.language
                 ):
                     raise LexiconNotUsableError(
                         f"lexicon {identifier!r} language {metadata.get('language')!r} is not compatible "
@@ -98,14 +93,15 @@ class Phonemizer:
                         lexicon=g2lex.open(self.store.path(identifier)),
                     )
                 )
-            self._fallback_name: str | None = None
-            self.fallback: Fallback | None = None
+            self._provider_name: str | None = None
+            self.provider: PronunciationProvider | None = None
+            self._owns_provider = False
             if isinstance(fallback, str):
                 if fallback not in {"espeak", "goruut"}:
-                    raise ValueError(f"unknown fallback: {fallback}")
-                self._fallback_name = fallback
+                    raise ValueError(f"unknown provider: {fallback}")
+                self._provider_name = fallback
             elif fallback is not None:
-                self.fallback = fallback
+                self.provider = fallback
         except Exception:
             for layer in self.layers:
                 layer.lexicon.close()
@@ -116,74 +112,96 @@ class Phonemizer:
         if self._closed:
             raise ValueError("phonemizer is closed")
 
-    def _get_fallback(self) -> Fallback | None:
-        if self.fallback is not None:
-            return self.fallback
-        if self._fallback_name is None:
+    def _get_provider(self) -> PronunciationProvider | None:
+        if self.provider is not None:
+            return self.provider
+        if self._provider_name is None:
             return None
-        try:
-            self.fallback = create_fallback(self._fallback_name)
-        except LexphonError:
-            return None
-        return self.fallback
+        self.provider = create_provider(self._provider_name)
+        self._owns_provider = True
+        return self.provider
 
-    def _coerce_fallback_value(
+    def _provider_name_for(self, provider: PronunciationProvider) -> str:
+        name = getattr(provider, "name", None)
+        if not isinstance(name, str) or not name:
+            raise ProviderOutputError("provider must declare a non-empty name")
+        return name
+
+    def _provider_encoding_for(self, provider: PronunciationProvider) -> str:
+        encoding = getattr(provider, "source_encoding", None)
+        if not isinstance(encoding, str) or not encoding:
+            raise ProviderOutputError("provider must declare a non-empty source_encoding")
+        return encoding
+
+    def _normalize_provider_value(
         self,
-        fallback: Fallback,
-        value: FallbackPronunciation | str | None,
-    ) -> FallbackPronunciation | None:
-        if isinstance(value, FallbackPronunciation):
-            source = value.source_pronunciation or value.pronunciation
-            parsed = parse_pronunciation_controls(" ".join(source.split()))
-            return FallbackPronunciation(
-                pronunciation=parsed.pronunciation,
-                provider=value.provider,
-                source_pronunciation=source,
-                language_markers=parsed.language_markers,
-                source_encoding=value.source_encoding,
-                provider_language=value.provider_language or self.language,
-            )
-        if not isinstance(value, str) or not value:
+        provider: PronunciationProvider,
+        value: object,
+    ) -> PronunciationVariant | None:
+        if value is None:
             return None
-        parsed = parse_pronunciation_controls(" ".join(value.split()))
-        return FallbackPronunciation(
-            pronunciation=parsed.pronunciation,
-            provider=getattr(fallback, "name", fallback.__class__.__name__.lower()),
-            source_pronunciation=value,
-            language_markers=parsed.language_markers,
-            provider_language=self.language,
-        )
-
-    def _lookup_fallback(self, token: str) -> FallbackPronunciation | None:
-        fallback = self._get_fallback()
-        if fallback is None:
-            return None
+        if not isinstance(value, str) or not value.strip():
+            name = self._provider_name_for(provider)
+            raise ProviderOutputError(f"provider {name!r} returned malformed pronunciation output")
         try:
-            value = fallback.phonemize(token, self.language)
-        except Exception:  # noqa: BLE001
-            return None
-        return self._coerce_fallback_value(fallback, value)
+            return normalize_pronunciation(value, self._provider_encoding_for(provider))
+        except UnsupportedAlphabetError as error:
+            name = self._provider_name_for(provider)
+            raise ProviderOutputError(
+                f"provider {name!r} returned unsupported pronunciation output"
+            ) from error
 
-    def _fallback_token(
+    def _call_provider(self, provider: PronunciationProvider, token: str) -> str | None:
+        try:
+            value = provider.phonemize(token, self.language)
+        except ProviderError:
+            raise
+        except Exception as error:
+            name = self._provider_name_for(provider)
+            raise ProviderExecutionError(f"provider {name!r} execution failed: {error}") from error
+        if value is not None and not isinstance(value, str):
+            name = self._provider_name_for(provider)
+            raise ProviderOutputError(f"provider {name!r} returned malformed pronunciation output")
+        return value
+
+    def _provider_token(
         self,
         token: str,
         tag: str | None,
-        result: FallbackPronunciation,
+        provider: PronunciationProvider,
+        variant: PronunciationVariant,
     ) -> PronunciationToken:
-        variant = PronunciationVariant(
-            pronunciation=result.pronunciation,
-            source_pronunciation=result.source_pronunciation,
-            language_markers=result.language_markers,
-        )
         return PronunciationToken(
             text=token,
-            pronunciation=result.pronunciation,
-            source="fallback",
-            source_encoding=result.source_encoding,
-            variants=(result.pronunciation,),
+            source="provider",
+            variants=(variant,),
+            source_encoding=self._provider_encoding_for(provider),
             selector_tag=tag,
-            variant_details=(variant,),
-            provider=result.provider,
+            provider=self._provider_name_for(provider),
+            requested_language=self.language,
+        )
+
+    def _lexicon_result(
+        self,
+        *,
+        token: str,
+        layer: _Layer,
+        matched_key: str,
+        value: object,
+        tag: str | None,
+    ) -> PronunciationToken | None:
+        variants = g2lex.pronunciation_variants(value, tag=tag)
+        if not variants:
+            return None
+        normalized = _normalize_variants(variants, layer.encoding)
+        return PronunciationToken(
+            text=token,
+            source="lexicon",
+            variants=normalized,
+            lexicon_id=layer.identifier,
+            matched_key=matched_key,
+            source_encoding=layer.encoding,
+            selector_tag=tag,
         )
 
     def lookup_lexicon(
@@ -200,75 +218,76 @@ class Phonemizer:
                 value = layer.lexicon.get(candidate, None)
                 if value is None:
                     continue
-                variants = g2lex.pronunciation_variants(value, tag=tag)
-                if not variants:
-                    continue
-                variant_details = _normalize_variants(variants, layer.encoding)
-                ipa_variants = tuple(detail.pronunciation for detail in variant_details)
-                return PronunciationToken(
-                    text=token,
-                    pronunciation=ipa_variants[0],
-                    source="lexicon",
-                    lexicon_id=layer.identifier,
+                result = self._lexicon_result(
+                    token=token,
+                    layer=layer,
                     matched_key=candidate,
-                    source_encoding=layer.encoding,
-                    variants=ipa_variants,
-                    selector_tag=tag,
-                    variant_details=variant_details,
+                    value=value,
+                    tag=tag,
                 )
+                if result is not None:
+                    return result
         return None
 
-    def lookup(self, token: str, *, tag: str | None = None) -> PronunciationToken:
-        """Look up lexicon evidence first, then use the configured fallback."""
+    def lookup(self, token: str, *, tag: str | None = None) -> PronunciationToken | None:
+        """Look up a token in the lexicons, then use the configured provider."""
         self._ensure_open()
         lexical = self.lookup_lexicon(token, tag=tag)
         if lexical is not None:
             return lexical
-        fallback = self._lookup_fallback(token)
-        if fallback is not None:
-            return self._fallback_token(token, tag, fallback)
-        return PronunciationToken(
-            text=token, pronunciation=None, source="unknown", selector_tag=tag
-        )
+        provider = self._get_provider()
+        if provider is None:
+            return None
+        raw = self._call_provider(provider, token)
+        variant = self._normalize_provider_value(provider, raw)
+        if variant is None:
+            return None
+        return self._provider_token(token, tag, provider, variant)
 
     def lookup_many(
         self,
         tokens: Sequence[str],
         *,
         tag: str | None = None,
-    ) -> tuple[PronunciationToken, ...]:
-        """Look up tokens with one batch call to fallback providers when available."""
+    ) -> tuple[PronunciationToken | None, ...]:
+        """Look up tokens with optional real provider batching."""
         self._ensure_open()
         values = tuple(tokens)
         results: list[PronunciationToken | None] = [
             self.lookup_lexicon(token, tag=tag) for token in values
         ]
         missing = tuple(index for index, result in enumerate(results) if result is None)
-        fallback = self._get_fallback()
-        if missing and fallback is not None:
-            batch = getattr(fallback, "phonemize_many", None)
+        provider = self._get_provider()
+        if not missing or provider is None:
+            return tuple(results)
+
+        if isinstance(provider, BatchPronunciationProvider):
             try:
-                if callable(batch):
-                    raw_values = batch(tuple(values[index] for index in missing), self.language)
-                else:
-                    raw_values = tuple(
-                        fallback.phonemize(values[index], self.language) for index in missing
+                raw_values = tuple(
+                    provider.phonemize_many(
+                        tuple(values[index] for index in missing), self.language
                     )
-            except Exception:  # noqa: BLE001
-                raw_values = ()
-            if len(raw_values) == len(missing):
-                for index, raw_value in zip(missing, raw_values):
-                    normalized = self._coerce_fallback_value(fallback, raw_value)
-                    if normalized is not None:
-                        results[index] = self._fallback_token(values[index], tag, normalized)
-        return tuple(
-            result
-            if result is not None
-            else PronunciationToken(
-                text=values[index], pronunciation=None, source="unknown", selector_tag=tag
-            )
-            for index, result in enumerate(results)
-        )
+                )
+            except ProviderError:
+                raise
+            except Exception as error:
+                name = self._provider_name_for(provider)
+                raise ProviderExecutionError(
+                    f"provider {name!r} batch execution failed: {error}"
+                ) from error
+            if len(raw_values) != len(missing):
+                name = self._provider_name_for(provider)
+                raise ProviderOutputError(
+                    f"provider {name!r} returned {len(raw_values)} results for {len(missing)} inputs"
+                )
+        else:
+            raw_values = tuple(self._call_provider(provider, values[index]) for index in missing)
+
+        for index, raw_value in zip(missing, raw_values):
+            variant = self._normalize_provider_value(provider, raw_value)
+            if variant is not None:
+                results[index] = self._provider_token(values[index], tag, provider, variant)
+        return tuple(results)
 
     def lookup_prefixes(
         self,
@@ -277,12 +296,7 @@ class Phonemizer:
         position: int = 0,
         tag: str | None = None,
     ) -> tuple[PronunciationToken, ...]:
-        """Return known pronunciation layers matching prefixes at ``position``.
-
-        Results are ordered by layer precedence and then longest match first.
-        Only exact dictionary keys are returned; fallback providers are not
-        consulted for prefix matching.
-        """
+        """Return known pronunciation layers matching prefixes at ``position``."""
         self._ensure_open()
         if not isinstance(text, str) or position < 0 or position >= len(text):
             return ()
@@ -300,39 +314,34 @@ class Phonemizer:
                 value = layer.lexicon.get(candidate, None)
                 if value is None:
                     continue
-                variants = g2lex.pronunciation_variants(value, tag=tag)
-                if not variants:
-                    continue
-                variant_details = _normalize_variants(variants, layer.encoding)
-                ipa_variants = tuple(detail.pronunciation for detail in variant_details)
-                matches.append(
-                    PronunciationToken(
-                        text=candidate,
-                        pronunciation=ipa_variants[0],
-                        source="lexicon",
-                        lexicon_id=layer.identifier,
-                        matched_key=candidate,
-                        source_encoding=layer.encoding,
-                        variants=ipa_variants,
-                        selector_tag=tag,
-                        variant_details=variant_details,
-                    )
+                result = self._lexicon_result(
+                    token=candidate,
+                    layer=layer,
+                    matched_key=candidate,
+                    value=value,
+                    tag=tag,
                 )
-                seen.add(candidate)
+                if result is not None:
+                    matches.append(result)
+                    seen.add(candidate)
         return tuple(matches)
 
     def phonemize_tokens(self, text: str, *, tag: str | None = None) -> PhonemizationResult:
         self._ensure_open()
+        tokenized = tokenize(text)
+        content = tuple(token for token, punctuation in tokenized if not punctuation)
+        looked_up = iter(self.lookup_many(content, tag=tag))
         tokens: list[PronunciationToken] = []
-        for token, punctuation in tokenize(text):
+        for token, punctuation in tokenized:
             if punctuation:
-                tokens.append(
-                    PronunciationToken(
-                        text=token, pronunciation=None, source="literal", punctuation=True
-                    )
-                )
+                tokens.append(PronunciationToken(text=token, source="literal", punctuation=True))
             else:
-                tokens.append(self.lookup(token, tag=tag))
+                result = next(looked_up)
+                tokens.append(
+                    result
+                    if result is not None
+                    else PronunciationToken(text=token, source="unknown")
+                )
         return PhonemizationResult(text=text, language=self.language, tokens=tuple(tokens))
 
     def phonemize(
@@ -343,7 +352,10 @@ class Phonemizer:
         unknown: str = "error",
         punctuation: str = "keep",
     ) -> str:
-        return self.phonemize_tokens(text, tag=tag).render(unknown=unknown, punctuation=punctuation)
+        return self.phonemize_tokens(text, tag=tag).render(
+            unknown=unknown,
+            punctuation=punctuation,
+        )
 
     def close(self) -> None:
         if self._closed:
@@ -351,6 +363,10 @@ class Phonemizer:
         self._closed = True
         for layer in self.layers:
             layer.lexicon.close()
+        if self._owns_provider and self.provider is not None:
+            close = getattr(self.provider, "close", None)
+            if callable(close):
+                close()
 
     def __enter__(self):
         self._ensure_open()
