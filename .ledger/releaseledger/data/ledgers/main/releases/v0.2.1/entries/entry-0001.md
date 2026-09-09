@@ -12,11 +12,11 @@ status: accepted
 audience: null
 scopes: []
 source_refs:
-- tl:task-0012
+  - tl:task-0012
 paths:
-- lexphon/providers.py
-- tests/test_espeak_batch.py
-- README.md
+  - lexphon/providers.py
+  - tests/test_espeak_batch.py
+  - README.md
 issues: []
 prs: []
 sources: []

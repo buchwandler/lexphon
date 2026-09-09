@@ -64,9 +64,7 @@ def test_batch_preserves_order(monkeypatch: pytest.MonkeyPatch) -> None:
         lambda *args, **kwargs: _completed("A\nB\nC\n"),
     )
 
-    result = EspeakProvider("/fake/espeak").phonemize_many(
-        ("first", "second", "third"), "en-US"
-    )
+    result = EspeakProvider("/fake/espeak").phonemize_many(("first", "second", "third"), "en-US")
 
     assert result == ("A", "B", "C")
 
@@ -101,9 +99,7 @@ def test_batch_all_empty_does_not_run_subprocess(monkeypatch: pytest.MonkeyPatch
 
 
 @pytest.mark.parametrize("value", ["Haus\nWelt", "Haus\rWelt"])
-def test_batch_rejects_embedded_line_breaks(
-    monkeypatch: pytest.MonkeyPatch, value: str
-) -> None:
+def test_batch_rejects_embedded_line_breaks(monkeypatch: pytest.MonkeyPatch, value: str) -> None:
     monkeypatch.setattr(
         "lexphon.providers.subprocess.run",
         lambda *args, **kwargs: pytest.fail("must not run"),
@@ -111,7 +107,6 @@ def test_batch_rejects_embedded_line_breaks(
 
     with pytest.raises(ProviderExecutionError, match="must not contain line breaks"):
         EspeakProvider("/fake/espeak").phonemize_many((value,), "de-DE")
-
 
 
 def test_batch_rejects_nonzero_return_code(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -125,9 +120,7 @@ def test_batch_rejects_nonzero_return_code(monkeypatch: pytest.MonkeyPatch) -> N
 
 
 @pytest.mark.parametrize("error", [OSError("missing"), subprocess.SubprocessError("failed")])
-def test_batch_wraps_process_errors(
-    monkeypatch: pytest.MonkeyPatch, error: Exception
-) -> None:
+def test_batch_wraps_process_errors(monkeypatch: pytest.MonkeyPatch, error: Exception) -> None:
     def run(*args: Any, **kwargs: Any) -> SimpleNamespace:
         raise error
 
