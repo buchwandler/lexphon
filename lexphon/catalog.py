@@ -18,7 +18,6 @@ _HASH_RE = re.compile(r"^[0-9a-f]{64}$")
 _ID_RE = re.compile(r"^[a-z]{2,3}(?:-[a-z0-9]{2,8})*:[a-z0-9][a-z0-9._-]*$")
 _LOCALE_RE = re.compile(r"^[a-z]{2,3}(?:-[a-z0-9]{2,8})*$")
 _SUPPORTED_KINDS = {"pronunciation", "membership"}
-_SUPPORTED_ENCODINGS = {"ipa", "arpabet", "none"}
 
 
 def _require_text(value: dict[str, Any], key: str, label: str) -> str:
@@ -91,10 +90,6 @@ class CatalogArtifact:
         if kind not in _SUPPORTED_KINDS:
             raise CatalogError(f"artifact {identifier} has unsupported kind: {kind!r}")
         encoding = _require_text(value, "phoneme_encoding", f"artifact {identifier}").casefold()
-        if encoding not in _SUPPORTED_ENCODINGS:
-            raise CatalogError(
-                f"artifact {identifier} has unsupported phoneme_encoding: {encoding!r}"
-            )
         if kind == "membership" and encoding != "none":
             raise CatalogError(f"membership artifact {identifier} must use phoneme_encoding 'none'")
         if kind == "pronunciation" and encoding == "none":

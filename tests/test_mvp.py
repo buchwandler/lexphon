@@ -136,7 +136,7 @@ def test_dynamic_version_is_exposed() -> None:
 def test_builtin_lexhint_profiles_resolve_aliases() -> None:
     expected = {
         "ru": "ru:lexhint",
-        "th": "th:lexhint",
+        "th": "th:lexhint-native",
         "vi": "vi:lexhint",
         "ja": "ja:lexhint",
         "ko": "ko:lexhint",

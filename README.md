@@ -47,8 +47,21 @@ lexphon data remove de-de:gold
 lexphon phonemize --language de-DE "Die Leute kommen."
 ```
 
+When upgrading from older built-in defaults, provision the new generic assets explicitly before using `lexicons=None`:
+
+```bash
+lexphon data install en-us:lexhint
+lexphon data install en-gb:lexhint
+lexphon data install fr:lexhint
+lexphon data install th:lexhint-native
+```
+
+Applications that intentionally need an older `*:gold` application-specific asset should select it explicitly through their downstream integration.
+
 Use `--catalog PATH_OR_URL` and `--data-home PATH` for a local release or alternate store. Installation downloads the manifest first, verifies manifest and asset hashes and sizes, checks catalog and manifest identity, opens the G2Lex asset, and atomically activates a complete version. A copied, pre-populated store eliminates Lexphon catalog and lexicon downloads during runtime. Optional providers have separate provisioning requirements.
-The production German assets are `de-de:gold`, `de-de:crane`, `de-de:espeak`, and `de-de:olaph`. English CMUdict is available as `en-us:cmudict`. Membership assets can be installed for inventory use but cannot be selected as pronunciation layers.
+The production German assets are `de-de:gold`, `de-de:crane`, `de-de:espeak`, and `de-de:olaph`. English CMUdict is available as the explicit ARPABET alternative `en-us:cmudict`. LexHint logical IDs use `:lexhint` for the preferred/default asset and `:lexhint-native` for an explicit native-Wiktionary alternative. Native-only languages such as Thai use only the native suffix; English's `en-us:lexhint` and `en-gb:lexhint` use native English Wiktionary.
+
+Catalog pronunciation encodings are not all generic Phonemizer alphabets. Lexphon can discover, install, and verify application-specific assets such as `kokoro-v1`, but selecting one as a generic Phonemizer layer raises `UnsupportedAlphabetError`. Kokoro vocabulary conversion remains in KokoroG2P.
 
 Data release versions and the Lexphon Python package version are independent. Pin the data catalog or release during provisioning, and pin the Python dependency separately.
 

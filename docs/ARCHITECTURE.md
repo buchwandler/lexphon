@@ -19,7 +19,7 @@ Lexphon does not own source acquisition, dataset transformations, licensing tran
 
 ## Catalog and installation
 
-Lexphon accepts catalog version 1 with runtime contract `g2lex-data.catalog.v1`. Every artifact has a validated logical ID, locale, kind, source encoding, data version, release tag, manifest reference, asset reference, hashes, and asset size. Pronunciation assets use IPA or ARPABET. Membership assets use `none` and are not pronunciation layers.
+Lexphon accepts catalog version 1 with runtime contract `g2lex-data.catalog.v1`. Every artifact has a validated logical ID, locale, kind, source encoding, data version, release tag, manifest reference, asset reference, hashes, and asset size. Membership assets use `none` and are not pronunciation layers. Pronunciation assets may declare application-specific encodings such as `kokoro-v1`; the data layer can discover, install, and verify them even when the generic Phonemizer cannot normalize them.
 
 `DataStore.install()` is the only asset download path and is an explicit network-capable provisioning operation. It downloads and verifies the manifest, validates manifest metadata against the catalog, downloads and verifies the asset, opens it with G2Lex, and moves a complete version into `assets/<logical-id>__<name>/<data-version>/`. A logical ID and data version are immutable. The index is updated atomically. Failed installations remove staging and never register an active partial version.
 
@@ -38,11 +38,17 @@ A catalog can declare an artifact before its referenced release resource is publ
 
 Data release versions and the Lexphon Python package version are independent. Applications should pin both the Python dependency and the immutable data catalog or release used during provisioning.
 
+## LexHint source variants
+
+`*:lexhint` is the preferred/default logical asset. For non-English languages with both upstream sources, it is English-Wiktionary-derived, while `*:lexhint-native` is the explicit native-Wiktionary alternative. Native-only languages such as Thai use only `*:lexhint-native`. English is the special case: `en-us:lexhint` and `en-gb:lexhint` use native English Wiktionary.
+
+Logical IDs already encode source selection, so Lexphon does not resolve source variants or add a source selector. `kokoro-v1` artifacts may be discoverable, installable, and verifiable through `DataStore`, but they are not generic Phonemizer layers. Kokoro-specific conversion remains a KokoroG2P responsibility.
+
 ## Runtime rule
 
 `Phonemizer(...)` opens only already-installed pronunciation assets. A missing lexicon raises `LexiconNotInstalledError` with an install command. Construction, lookup, token phonemization, and rendering do not download data.
 
-Selected layers are searched in caller order. Within each layer, profile-ordered candidates are searched before moving to the next layer. Profiles provide generic Unicode normalization, apostrophe normalization, and exact, lower, casefold, or title candidates. German uses `de` and `de-de` aliases and defaults to `de-de:gold`. English continues to default to `en-us:gold`; CMUdict must be selected explicitly.
+Selected layers are searched in caller order. Within each layer, profile-ordered candidates are searched before moving to the next layer. Profiles provide generic Unicode normalization, apostrophe normalization, and exact, lower, casefold, or title candidates. The built-in generic defaults are `en-us:lexhint`, `en-gb:lexhint`, `fr:lexhint`, and `th:lexhint-native` for the affected profiles; German remains `de-de:gold`, and CMUdict remains an explicit `en-us:cmudict` alternative. A language-only asset such as `fr:lexhint` may serve `fr-FR`, but a region-specific asset cannot cross to another region.
 
 The public result alphabet is IPA and every non-null pronunciation is Unicode NFC. ARPABET is converted with deterministic phone and primary or secondary stress rules. Unknown phones and unsupported encodings raise `UnsupportedAlphabetError`. Lexphon also consumes recognized inline language-control markers in IPA source notation at this boundary. The marker text is removed from public IPA and preserved as `PronunciationLanguageMarker` metadata with offsets into the cleaned IPA.
 

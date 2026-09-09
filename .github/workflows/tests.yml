@@ -50,6 +50,7 @@ jobs:
       - run: python -m pip install "g2lex==0.1.8" pytest ruff
       - run: python -m pip install --no-deps -e .
       - run: ruff check lexphon tests
+      - run: pytest tests/test_production.py::test_current_g2lex_v1_fixture_opens
       - run: pytest
 
   build-artifacts:

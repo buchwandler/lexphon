@@ -224,9 +224,9 @@ def _data_main(argv: list[str]) -> int:
             return 0
         for available_artifact in available_artifacts:
             print(
-                f"{available_artifact.id}\t{available_artifact.language}\t"
-                f"{available_artifact.phoneme_encoding}\t{available_artifact.data_version}\t"
-                f"{available_artifact.release_tag}"
+                f"{available_artifact.id}\t{available_artifact.display_name}\t"
+                f"{available_artifact.language}\t{available_artifact.phoneme_encoding}\t"
+                f"{available_artifact.data_version}\t{available_artifact.release_tag}"
             )
     return 0
 

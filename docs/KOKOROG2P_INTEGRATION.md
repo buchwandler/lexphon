@@ -61,6 +61,21 @@ raw source notation -> clean generic IPA -> structured language-marker metadata
 
 KokoroG2P consumes the clean `pronunciation` and may use `language_markers` as optional downstream evidence. It must not reparse `source_pronunciation` or search `pronunciation` for raw marker syntax such as `(en)` or `(de)`.
 
+## LexHint source variants
+
+LexHint logical IDs make source selection explicit. `*:lexhint` is the preferred/default asset and is normally English-Wiktionary-derived for non-English languages with both sources. `*:lexhint-native` is the explicit native-Wiktionary alternative. Native-only languages such as Thai use only the native suffix. English's `en-us:lexhint` and `en-gb:lexhint` use native English Wiktionary.
+
+Provision the asset that matches the profile before relying on implicit defaults:
+
+```bash
+lexphon data install en-us:lexhint
+lexphon data install en-gb:lexhint
+lexphon data install fr:lexhint
+lexphon data install th:lexhint-native
+```
+
+Lexphon's data layer may discover, install, and verify `kokoro-v1` assets, but the generic Phonemizer rejects them as unsupported layers. KokoroG2P owns Kokoro vocabulary conversion.
+
 ## German configuration
 
 German supports `de` and `de-de` aliases and defaults to `de-de:gold`. The application may preserve public names with an alias map:
@@ -76,7 +91,7 @@ GERMAN_LEXPHON_IDS = {
 
 Kokoro's existing German selector normalization remains an application concern. For example, an application can map its `ART` or `PRON` tags to the generic selector expected by G2Lex before calling `engine.lookup(word, tag=tag)`. Lexphon does not know Kokoro or spaCy tag conventions. Caller-supplied lexicon order remains semantic.
 
-English CMUdict is selected explicitly with `en-us:cmudict`; it does not replace the generic `en-us:gold` default.
+English CMUdict is selected explicitly with `en-us:cmudict`; it remains an ARPABET alternative rather than replacing the generic `en-us:lexhint` default.
 
 ## Ownership boundary
 

@@ -15,7 +15,7 @@ from .errors import (
     ProviderOutputError,
     UnsupportedAlphabetError,
 )
-from .language import normalize_language_tag
+from .language import is_lexicon_language_compatible, normalize_language_tag
 from .models import PhonemizationResult, PronunciationToken, PronunciationVariant
 from .profiles import LanguageProfile, ProfileRegistry
 from .providers import BatchPronunciationProvider, PronunciationProvider, create_provider
@@ -63,9 +63,8 @@ class Phonemizer:
                         f"lexicon {identifier!r} has kind {kind!r}; only pronunciation lexica can be layers"
                     )
                 metadata_language = metadata.get("language")
-                if (
-                    not isinstance(metadata_language, str)
-                    or normalize_language_tag(metadata_language) != self.language
+                if not isinstance(metadata_language, str) or not is_lexicon_language_compatible(
+                    self.language, metadata_language
                 ):
                     raise LexiconNotUsableError(
                         f"lexicon {identifier!r} language {metadata.get('language')!r} is not compatible "
