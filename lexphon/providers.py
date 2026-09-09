@@ -224,6 +224,66 @@ class EspeakProvider:
         return _raw_output(completed.stdout, self.name)
 
 
+    def phonemize_many(
+        self,
+        texts: Sequence[str],
+        language: str,
+    ) -> tuple[str | None, ...]:
+        values = tuple(texts)
+        if not values:
+            return ()
+
+        nonempty_indexes: list[int] = []
+        nonempty_values: list[str] = []
+        for index, value in enumerate(values):
+            if "\n" in value or "\r" in value:
+                raise ProviderExecutionError(
+                    "eSpeak batch inputs must not contain line breaks"
+                )
+            if not value or not value.strip():
+                continue
+            nonempty_indexes.append(index)
+            nonempty_values.append(value)
+
+        if not nonempty_values:
+            return tuple(None for _ in values)
+
+        try:
+            completed = subprocess.run(
+                [
+                    self.executable,
+                    "-q",
+                    "--ipa=3",
+                    "-v",
+                    normalize_language_tag(language),
+                ],
+                input="\n".join(nonempty_values) + "\n",
+                check=False,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+            )
+        except (OSError, subprocess.SubprocessError) as error:
+            raise ProviderExecutionError(
+                f"eSpeak provider execution failed: {error}"
+            ) from error
+        if completed.returncode != 0:
+            raise ProviderExecutionError(
+                f"eSpeak provider exited with status {completed.returncode}"
+            )
+
+        lines = completed.stdout.splitlines()
+        if len(lines) != len(nonempty_values):
+            raise ProviderOutputError(
+                "eSpeak batch returned "
+                f"{len(lines)} results for {len(nonempty_values)} inputs"
+            )
+
+        result: list[str | None] = [None] * len(values)
+        for index, output in zip(nonempty_indexes, lines, strict=True):
+            result[index] = _raw_output(output, self.name)
+        return tuple(result)
+
 class GoruutProvider:
     """Optional Goruut raw IPA provider through the pygoruut package."""
 

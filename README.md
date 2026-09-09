@@ -116,6 +116,8 @@ For example, a provider result such as `(en)fˈIl(de)` is returned as clean `fˈ
 results = engine.lookup_many(["one", "two", "three"])
 ```
 
+When `fallback="espeak"`, the eSpeak provider is batch-capable: `lookup_many()` invokes eSpeak once for the batch of lexicon misses rather than once per token.
+
 Batch output must contain exactly one `str` or `None` result per submitted miss. Lexphon rejects strings, bytes, non-sequences, wrong cardinality, and malformed elements with `ProviderOutputError`. Provider execution failures raise `ProviderExecutionError`; `None` remains a genuine direct miss. All provider output is normalized at the engine boundary.
 
 ### Lexicon configuration
