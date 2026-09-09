@@ -1,0 +1,63 @@
+schema_version: 1
+object_type: commit_audit_sheet
+versioning:
+  schema_version: 1
+  revision: 3
+release_version: v0.2.2
+git_base_ref: v0.2.1
+git_base_sha: 056f010f300e3c9217a36c73c46e9e7272ec8c6f
+git_head_ref: HEAD
+git_head_sha: a7f10d9d0730e024af2ac0779052d84f3bc990ed
+git_range: 056f010f300e3c9217a36c73c46e9e7272ec8c6f..a7f10d9d0730e024af2ac0779052d84f3bc990ed
+commit_count: 1
+rows:
+  - sha: a7f10d9d0730e024af2ac0779052d84f3bc990ed
+    source_ref: git:a7f10d9d0730e024af2ac0779052d84f3bc990ed
+    short_sha: a7f10d9
+    changed_paths:
+      - .github/workflows/tests.yml
+      - README.md
+      - docs/ARCHITECTURE.md
+      - docs/KOKOROG2P_INTEGRATION.md
+      - docs/changelog.md
+      - lexphon/catalog.py
+      - lexphon/cli.py
+      - lexphon/engine.py
+      - lexphon/language.py
+      - lexphon/profiles.toml
+      - tests/fixtures/g2lex-v1-compat.g2lex
+      - tests/fixtures/g2lex-v1-compat.jsonl
+      - tests/test_mvp.py
+      - tests/test_production.py
+    stats:
+      files_changed: 0
+      insertions: 227
+      deletions: 23
+    inspected: true
+    inspected_paths:
+      - .github/workflows/tests.yml
+      - README.md
+      - docs/ARCHITECTURE.md
+      - docs/KOKOROG2P_INTEGRATION.md
+      - docs/changelog.md
+      - lexphon/catalog.py
+      - lexphon/cli.py
+      - lexphon/engine.py
+      - lexphon/language.py
+      - lexphon/profiles.toml
+      - tests/fixtures/g2lex-v1-compat.g2lex
+      - tests/fixtures/g2lex-v1-compat.jsonl
+      - tests/test_mvp.py
+      - tests/test_production.py
+    observed_behavior:
+      Catalog validation now preserves application-specific encodings
+      such as kokoro-v1, while generic Phonemizer defaults use the corrected LexHint
+      assets and language compatibility rules.
+    public_impact: public
+    decision: accepted
+    stale: false
+    evidence_subject: "feeat: support kokoro-v1 assets and correct build in defaults"
+    target_entry_id: entry-0001
+    notes:
+      Reviewed the catalog, runtime, defaults, documentation, fixture, CI, and
+      production tests changed by this commit.

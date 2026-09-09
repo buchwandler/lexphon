@@ -3,16 +3,16 @@ schema_version: 2
 object_type: release
 versioning:
   schema_version: 1
-  revision: 2
+  revision: 3
 version: v0.2.1
-status: planned
+status: released
 history_state: curated
 title: Lexphon 0.2.1
-released_at: null
+released_at: "2026-09-09"
 previous_version: v0.2.0
 cancel_reason: null
 superseded_by: null
-changelog_file: null
+changelog_file: docs/changelog.md
 boundary_ref: null
 source_refs: []
 source_count: null
