@@ -1,0 +1,30 @@
+schema: releaseledger.entry-batch.v1
+operation: create
+schema_version: 1
+object_type: release_entry_batch
+release_version: v0.2.3
+git_base_ref: a7f10d9d0730e024af2ac0779052d84f3bc990ed
+git_base_sha: a7f10d9d0730e024af2ac0779052d84f3bc990ed
+git_head_ref: 25aeb7f370099a8b724a4bcf2cb77dc3e0745d18
+git_head_sha: 25aeb7f370099a8b724a4bcf2cb77dc3e0745d18
+include_merges: nontrivial
+entries:
+  - kind: internal
+    summary: "Changed generated release records and prior changelog sections"
+    status: accepted
+    internal: true
+    source_refs:
+      - git:27aa462d954597edb9476ba4957e31b56dca8e52
+    paths:
+      - .ledger/releaseledger/data/ledgers/main/events/events.jsonl
+      - .ledger/releaseledger/data/ledgers/main/releases/v0.2.1/release.md
+      - .ledger/releaseledger/data/ledgers/main/releases/v0.2.2/audit/commit-audit.yaml
+      - .ledger/releaseledger/data/ledgers/main/releases/v0.2.2/entries/entry-0001.md
+      - .ledger/releaseledger/data/ledgers/main/releases/v0.2.2/release.md
+      - docs/changelog.md
+    sources:
+      - git:27aa462d954597edb9476ba4957e31b56dca8e52
+    prs: []
+    issues: []
+    contributors:
+      - "@holgern"

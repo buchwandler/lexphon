@@ -1,0 +1,80 @@
+schema_version: 1
+object_type: commit_audit_sheet
+versioning:
+  schema_version: 1
+  revision: 4
+release_version: v0.2.3
+git_base_ref: v0.2.2
+git_base_sha: a7f10d9d0730e024af2ac0779052d84f3bc990ed
+git_head_ref: HEAD
+git_head_sha: 25aeb7f370099a8b724a4bcf2cb77dc3e0745d18
+git_range: a7f10d9d0730e024af2ac0779052d84f3bc990ed..25aeb7f370099a8b724a4bcf2cb77dc3e0745d18
+commit_count: 2
+rows:
+  - sha: 27aa462d954597edb9476ba4957e31b56dca8e52
+    source_ref: git:27aa462d954597edb9476ba4957e31b56dca8e52
+    short_sha: 27aa462
+    changed_paths:
+      - .ledger/releaseledger/data/ledgers/main/events/events.jsonl
+      - .ledger/releaseledger/data/ledgers/main/releases/v0.2.1/release.md
+      - .ledger/releaseledger/data/ledgers/main/releases/v0.2.2/audit/commit-audit.yaml
+      - .ledger/releaseledger/data/ledgers/main/releases/v0.2.2/entries/entry-0001.md
+      - .ledger/releaseledger/data/ledgers/main/releases/v0.2.2/release.md
+      - docs/changelog.md
+    stats:
+      files_changed: 0
+      insertions: 151
+      deletions: 8
+    inspected: true
+    inspected_paths:
+      - .ledger/releaseledger/data/ledgers/main/events/events.jsonl
+      - .ledger/releaseledger/data/ledgers/main/releases/v0.2.1/release.md
+      - .ledger/releaseledger/data/ledgers/main/releases/v0.2.2/audit/commit-audit.yaml
+      - .ledger/releaseledger/data/ledgers/main/releases/v0.2.2/entries/entry-0001.md
+      - .ledger/releaseledger/data/ledgers/main/releases/v0.2.2/release.md
+      - docs/changelog.md
+    observed_behavior:
+      Updates generated release documentation and releaseledger records
+      for v0.2.1/v0.2.2; no product behavior change is present in this commit.
+    public_impact: internal
+    decision: internal
+    stale: false
+    evidence_subject: "doc: changelog"
+    target_entry_id: entry-0002
+    notes:
+      Release bookkeeping for prior releases; intentionally excluded from public
+      v0.2.3 notes.
+  - sha: 25aeb7f370099a8b724a4bcf2cb77dc3e0745d18
+    source_ref: git:25aeb7f370099a8b724a4bcf2cb77dc3e0745d18
+    short_sha: 25aeb7f
+    changed_paths:
+      - .github/workflows/python-publish.yml
+      - .github/workflows/tests.yml
+      - lexphon/__init__.py
+      - lexphon/_version.py
+      - pyproject.toml
+      - scripts/check_dist_versions.py
+      - tests/test_version.py
+    stats:
+      files_changed: 0
+      insertions: 25
+      deletions: 23
+    inspected: true
+    inspected_paths:
+      - .github/workflows/python-publish.yml
+      - .github/workflows/tests.yml
+      - lexphon/__init__.py
+      - lexphon/_version.py
+      - pyproject.toml
+      - scripts/check_dist_versions.py
+      - tests/test_version.py
+    observed_behavior:
+      Derives lexphon.__version__ and distribution checks from installed
+      package metadata, configures setuptools-scm for builds, and makes CI checkouts
+      fetch full history so release-tag versioning and artifact checks work consistently.
+    public_impact: public
+    decision: accepted
+    stale: false
+    evidence_subject: "chore: fix automatic versioning"
+    target_entry_id: entry-0001
+    notes: Packaging and release validation behavior covered by a public changed entry.
