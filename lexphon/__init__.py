@@ -2,7 +2,12 @@
 
 from __future__ import annotations
 
-from ._version import __version__
+from importlib.metadata import PackageNotFoundError, version
+
+try:
+    __version__ = version("lexphon")
+except PackageNotFoundError:
+    __version__ = "0+unknown"
 from .alphabets import normalize_pronunciation
 from .engine import Phonemizer
 from .errors import (

@@ -2,15 +2,15 @@ from __future__ import annotations
 
 import argparse
 import os
-import re
 import sys
 import tarfile
 import zipfile
 from email.parser import Parser
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as distribution_version
 from pathlib import Path
 
 _PACKAGE = "lexphon"
-_VERSION_RE = re.compile(r'^__version__\s*=\s*["\']([^"\']+)["\']$', re.MULTILINE)
 
 
 def _metadata_version(content: str, path: Path) -> str:
@@ -46,12 +46,11 @@ def _artifact_version(path: Path) -> str:
     raise ValueError(f"unsupported distribution artifact: {path}")
 
 
-def _source_version(root: Path) -> str:
-    path = root / "lexphon" / "_version.py"
-    match = _VERSION_RE.search(path.read_text(encoding="utf-8"))
-    if match is None:
-        raise ValueError(f"could not read explicit version from {path}")
-    return match.group(1)
+def _installed_version() -> str:
+    try:
+        return distribution_version(_PACKAGE)
+    except PackageNotFoundError as error:
+        raise ValueError(f"{_PACKAGE} distribution is not installed") from error
 
 
 def _normalize_tag(tag: str) -> str:
@@ -65,10 +64,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("artifacts", nargs="+", type=Path)
     parser.add_argument("--tag", help="release tag, such as v0.2.0")
     args = parser.parse_args(argv)
-    root = Path(__file__).resolve().parents[1]
-
     try:
-        versions = {"source": _source_version(root)}
+        versions = {"source": _installed_version()}
         for artifact in args.artifacts:
             versions[str(artifact)] = _artifact_version(artifact)
         tag = args.tag or os.environ.get("GITHUB_REF_NAME")

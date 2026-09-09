@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=77"]
+requires = ["setuptools>=80", "setuptools-scm>=9.2"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -28,9 +28,6 @@ Issues = "https://github.com/buchwandler/lexphon/issues"
 Data = "https://github.com/buchwandler/g2lex-data"
 
 # Intentionally no src/ layer. The import package lives at ./lexphon.
-[tool.setuptools.dynamic]
-version = {attr = "lexphon._version.__version__"}
-
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["lexphon*"]
@@ -38,6 +35,9 @@ exclude = ["tests*"]
 
 [tool.setuptools.package-data]
 lexphon = ["profiles.toml", "py.typed"]
+
+[tool.setuptools_scm]
+fallback_version = "0+unknown"
 
 
 [tool.mypy]
