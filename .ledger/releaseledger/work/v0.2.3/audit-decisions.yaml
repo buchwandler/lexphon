@@ -1,41 +1,34 @@
 rows:
-- sha: 27aa462d954597edb9476ba4957e31b56dca8e52
-  inspected: true
-  inspected_paths:
-  - .ledger/releaseledger/data/ledgers/main/events/events.jsonl
-  - .ledger/releaseledger/data/ledgers/main/releases/v0.2.1/release.md
-  - .ledger/releaseledger/data/ledgers/main/releases/v0.2.2/audit/commit-audit.yaml
-  - .ledger/releaseledger/data/ledgers/main/releases/v0.2.2/entries/entry-0001.md
-  - .ledger/releaseledger/data/ledgers/main/releases/v0.2.2/release.md
-  - docs/changelog.md
-  inspected_paths:
-  - .ledger/releaseledger/data/ledgers/main/events/events.jsonl
-  - .ledger/releaseledger/data/ledgers/main/releases/v0.2.1/release.md
-  - .ledger/releaseledger/data/ledgers/main/releases/v0.2.2/audit/commit-audit.yaml
-  - .ledger/releaseledger/data/ledgers/main/releases/v0.2.2/entries/entry-0001.md
-  - .ledger/releaseledger/data/ledgers/main/releases/v0.2.2/release.md
-  - docs/changelog.md
-  observed_behavior: "Updates generated release documentation and releaseledger records for v0.2.1/v0.2.2; no product behavior change is present in this commit."
-  public_impact: internal
-  decision: internal
-  target_entry_key: null
-  target_entry_id: null
-  notes: "Release bookkeeping for prior releases; intentionally excluded from public v0.2.3 notes."
-  stale: false
-- sha: 25aeb7f370099a8b724a4bcf2cb77dc3e0745d18
-  inspected: true
-  inspected_paths:
-  - .github/workflows/python-publish.yml
-  - .github/workflows/tests.yml
-  - lexphon/__init__.py
-  - lexphon/_version.py
-  - pyproject.toml
-  - scripts/check_dist_versions.py
-  - tests/test_version.py
-  observed_behavior: "Derives lexphon.__version__ and distribution checks from installed package metadata, configures setuptools-scm for builds, and makes CI checkouts fetch full history so release-tag versioning and artifact checks work consistently."
-  public_impact: public
-  decision: accepted
-  target_entry_key: null
-  target_entry_id: null
-  notes: "Packaging and release validation behavior covered by a public changed entry."
-  stale: false
+  - sha: 27aa462d954597edb9476ba4957e31b56dca8e52
+    inspected: true
+    inspected_paths:
+      - .ledger/releaseledger/data/ledgers/main/events/events.jsonl
+      - .ledger/releaseledger/data/ledgers/main/releases/v0.2.1/release.md
+      - .ledger/releaseledger/data/ledgers/main/releases/v0.2.2/audit/commit-audit.yaml
+      - .ledger/releaseledger/data/ledgers/main/releases/v0.2.2/entries/entry-0001.md
+      - .ledger/releaseledger/data/ledgers/main/releases/v0.2.2/release.md
+      - docs/changelog.md
+    observed_behavior: "Updates generated release documentation and releaseledger records for v0.2.1/v0.2.2; no product behavior change is present in this commit."
+    public_impact: internal
+    decision: internal
+    target_entry_key: null
+    target_entry_id: null
+    notes: "Release bookkeeping for prior releases; intentionally excluded from public v0.2.3 notes."
+    stale: false
+  - sha: 25aeb7f370099a8b724a4bcf2cb77dc3e0745d18
+    inspected: true
+    inspected_paths:
+      - .github/workflows/python-publish.yml
+      - .github/workflows/tests.yml
+      - lexphon/__init__.py
+      - lexphon/_version.py
+      - pyproject.toml
+      - scripts/check_dist_versions.py
+      - tests/test_version.py
+    observed_behavior: "Derives lexphon.__version__ and distribution checks from installed package metadata, configures setuptools-scm for builds, and makes CI checkouts fetch full history so release-tag versioning and artifact checks work consistently."
+    public_impact: public
+    decision: accepted
+    target_entry_key: null
+    target_entry_id: null
+    notes: "Packaging and release validation behavior covered by a public changed entry."
+    stale: false
