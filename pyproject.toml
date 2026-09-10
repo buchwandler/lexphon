@@ -30,7 +30,7 @@ Data = "https://github.com/buchwandler/g2lex-data"
 # Intentionally no src/ layer. The import package lives at ./lexphon.
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["lexphon*"]
+include = ["lexphon*", "benchmarks*"]
 exclude = ["tests*"]
 
 [tool.setuptools.package-data]

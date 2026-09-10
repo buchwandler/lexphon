@@ -1,0 +1,119 @@
+"""Run the checked-in pronunciation benchmark matrix in one process."""
+
+from __future__ import annotations
+
+import argparse
+import json
+from collections.abc import Sequence
+from pathlib import Path
+
+from .catalog import iter_quality_benchmark_artifacts, load_benchmark_catalog
+from .model import BenchmarkPaths, BenchmarkSpec
+from .registry import discover_specs
+from .runner import _safe_id, run_spec
+
+
+def select_specs(
+    specs: Sequence[BenchmarkSpec], *, language: str | None = None, lexicon: str | None = None
+) -> tuple[BenchmarkSpec, ...]:
+    if lexicon:
+        return tuple(spec for spec in specs if spec.lexicon_id == lexicon)
+    if language:
+        key = language.casefold().replace("_", "-")
+        return tuple(
+            spec for spec in specs if spec.lexicon_id.split(":", 1)[0].casefold() == key
+        )
+    return tuple(specs)
+
+
+def run_matrix(
+    specs: Sequence[BenchmarkSpec],
+    *,
+    runner_args: Sequence[str] = (),
+    output_root: Path | None = None,
+) -> dict[str, object]:
+    results = []
+    for spec in specs:
+        args = list(runner_args)
+        if output_root is not None:
+            args.extend(["--output-dir", str(output_root / _safe_id(spec.lexicon_id))])
+        result = run_spec(spec, args)
+        comparison = result.summary.get("comparison", {})
+        coverage = result.summary.get("coverage", {})
+        results.append(
+            {
+                "lexicon_id": spec.lexicon_id,
+                "status": result.status,
+                "coverage_percentage": coverage.get("coverage_percentage", 0.0),
+                "compared": comparison.get("compared", 0),
+                "mean_broad_distance": comparison.get("mean_broad_distance"),
+                "strong_disagreement_rate": comparison.get("strong_disagreement_rate", 0.0),
+            }
+        )
+    return {"schema_version": 1, "benchmarks": results}
+
+
+def _parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--catalog")
+    parser.add_argument("--language")
+    parser.add_argument("--lexicon")
+    parser.add_argument("--data-home", type=Path)
+    parser.add_argument("--word-list", type=Path)
+    parser.add_argument("--refresh-word-list", action="store_true")
+    parser.add_argument("--offline", action="store_true")
+    parser.add_argument("--output-dir", type=Path)
+    parser.add_argument("--limit", type=int, default=50_000)
+    parser.add_argument("--min-rank", type=int)
+    parser.add_argument("--max-rank", type=int)
+    parser.add_argument("--reference", default="espeak")
+    parser.add_argument("--reference-language")
+    parser.add_argument("--report-threshold", type=float, default=0.30)
+    parser.add_argument("--strong-threshold", type=float, default=0.50)
+    parser.add_argument("--ignore-stress", action="store_true")
+    parser.add_argument("--no-install", action="store_true")
+    return parser
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    args = _parser().parse_args(argv)
+    specs = discover_specs()
+    if args.catalog:
+        catalog = load_benchmark_catalog(args.catalog)
+        catalog_ids = {artifact.id for artifact in iter_quality_benchmark_artifacts(catalog)}
+        specs = tuple(spec for spec in specs if spec.lexicon_id in catalog_ids)
+    specs = select_specs(specs, language=args.language, lexicon=args.lexicon)
+    output_root = args.output_dir or BenchmarkPaths.default().reports
+    runner_args: list[str] = []
+    for flag, value in (
+        ("--catalog", args.catalog),
+        ("--data-home", args.data_home),
+        ("--word-list", args.word_list),
+        ("--limit", args.limit),
+        ("--min-rank", args.min_rank),
+        ("--max-rank", args.max_rank),
+        ("--reference", args.reference),
+        ("--reference-language", args.reference_language),
+        ("--report-threshold", args.report_threshold),
+        ("--strong-threshold", args.strong_threshold),
+    ):
+        if value is not None:
+            runner_args.extend([flag, str(value)])
+    for flag, enabled in (
+        ("--refresh-word-list", args.refresh_word_list),
+        ("--offline", args.offline),
+        ("--ignore-stress", args.ignore_stress),
+        ("--no-install", args.no_install),
+    ):
+        if enabled:
+            runner_args.append(flag)
+    index = run_matrix(specs, runner_args=runner_args, output_root=output_root)
+    index_path = output_root / "index.json"
+    index_path.parent.mkdir(parents=True, exist_ok=True)
+    index_path.write_text(json.dumps(index, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    print(f"wrote {index_path} ({len(specs)} benchmarks)")
+    return 0 if all(item["status"] == "completed" for item in index["benchmarks"]) else 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

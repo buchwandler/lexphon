@@ -218,6 +218,10 @@ __marimo__/
 .streamlit/secrets.toml
 context_lexphon*.*
 
-# Developer validation outputs and downloaded word-list cache
-validation/
-.validation-cache/
+# Pronunciation benchmark generated/downloaded state
+benchmarks/pronunciation_validation/wordlists/*
+!benchmarks/pronunciation_validation/wordlists/.gitkeep
+benchmarks/pronunciation_validation/reports/*
+!benchmarks/pronunciation_validation/reports/.gitkeep
+benchmarks/pronunciation_validation/data/*
+!benchmarks/pronunciation_validation/data/.gitkeep

@@ -1,25 +1,32 @@
 from __future__ import annotations
-# ruff: noqa: I001
 
 import hashlib
-import importlib.util
 import json
-import sys
 from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 
-
-_spec = importlib.util.spec_from_file_location(
-    "validate_pronunciations_integration",
-    Path(__file__).parents[1] / "scripts" / "validate_pronunciations.py",
+from benchmarks.pronunciation_validation import wordlists
+from benchmarks.pronunciation_validation.model import RankedWord, WordListSpec
+from benchmarks.pronunciation_validation.references import generate_references
+from benchmarks.pronunciation_validation.reporting import (
+    build_summary,
+    write_mismatches,
+    write_summary,
 )
-assert _spec and _spec.loader
-_validation = importlib.util.module_from_spec(_spec)
-sys.modules[_spec.name] = _validation
-_spec.loader.exec_module(_validation)
+from benchmarks.pronunciation_validation.validation import collect_validation_rows
+from benchmarks.pronunciation_validation.wordlists import ensure_word_list, load_ranked_words
 
+_validation = SimpleNamespace(
+    RankedWord=RankedWord,
+    generate_references=generate_references,
+    collect_validation_rows=collect_validation_rows,
+    build_summary=build_summary,
+    write_mismatches=write_mismatches,
+    write_summary=write_summary,
+    load_ranked_words=load_ranked_words,
+)
 
 class FakeEngine:
     def __init__(self, values: dict[str, object]) -> None:
@@ -121,14 +128,10 @@ def test_batch_reference_failure_falls_back_to_individual_results() -> None:
     assert results["Broken"].status == "unavailable"
 
 
-def test_local_word_list_never_downloads(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_local_word_list_never_downloads(tmp_path: Path) -> None:
     path = tmp_path / "words.tsv"
     path.write_text("1\tHaus\n", encoding="utf-8")
-    args = _validation._parser().parse_args(["--word-list", str(path)])
-    monkeypatch.setattr(
-        _validation, "_download_word_list", lambda *_args: pytest.fail("downloaded")
-    )
-    assert _validation._word_list_path(args) == (path, str(path), None)
+    assert load_ranked_words(path) == [RankedWord(1, "Haus")]
 
 
 def test_download_adapter_is_explicit_and_records_ranked_cache(
@@ -144,9 +147,13 @@ def test_download_adapter_is_explicit_and_records_ranked_cache(
         def read(self) -> bytes:
             return b"Haus\nDie\n"
 
-    monkeypatch.setattr(_validation.urllib.request, "urlopen", lambda *_args, **_kwargs: Response())
-    target = _validation._download_word_list("https://example.test/words", tmp_path / "words.tsv")
-    assert target.read_text(encoding="utf-8") == "1\tHaus\n2\tDie\n"
+    monkeypatch.setattr(wordlists.urllib.request, "urlopen", lambda *_args, **_kwargs: Response())
+    source = WordListSpec(
+        id="fixture", language="de", url="https://example.test/words", revision="test", format="word"
+    )
+    result = ensure_word_list(source, tmp_path)
+    assert result.source_path.read_text(encoding="utf-8") == "1\tHaus\n2\tDie\n"
+    assert [word.word for word in result.words] == ["Haus", "Die"]
 
 
 def test_reports_are_deterministic_and_preserve_unrelated_asset(tmp_path: Path) -> None:
