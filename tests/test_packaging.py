@@ -16,6 +16,14 @@ ROOT = Path(__file__).resolve().parents[1]
 DIST = ROOT / "dist"
 
 
+def test_phonodist_is_only_an_optional_validation_dependency() -> None:
+    project = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    assert 'validation = ["phonodist>=0.1,<0.2"]' in project
+    runtime = next(line for line in project.splitlines() if line.startswith("dependencies ="))
+    assert "phonodist" not in runtime
+    assert 'dev = ["mypy' in project and "phonodist>=0.1,<0.2" in project
+
+
 def _members(path: Path) -> tuple[str, ...]:
     if path.suffix == ".whl":
         with zipfile.ZipFile(path) as archive:

@@ -14,6 +14,7 @@ from lexphon.errors import CatalogError, ProviderError, ProviderUnavailableError
 
 from .catalog import CatalogResolution, load_benchmark_catalog, provision_artifact, resolve_artifact
 from .model import BenchmarkPaths, BenchmarkRunResult, BenchmarkSpec, WordListResult
+from .phonetic import attach_phonetic_explanations, create_phonetic_context
 from .progress import ProgressReporter
 from .references import create_reference, provider_spec
 from .reporting import build_summary, write_reports
@@ -45,6 +46,11 @@ def _parser(spec: BenchmarkSpec) -> argparse.ArgumentParser:
     parser.add_argument("--strong-threshold", type=float, default=spec.strong_threshold)
     parser.add_argument("--ignore-stress", action="store_true", default=spec.ignore_stress)
     parser.add_argument("--no-install", action="store_true")
+    parser.add_argument(
+        "--require-phonodist",
+        action="store_true",
+        help="require Phonodist and a language-specific profile for this benchmark",
+    )
     parser.add_argument("--quiet", action="store_true", help="Suppress benchmark progress output.")
     return parser
 
@@ -109,6 +115,7 @@ def _summary_for_failure(
     catalog_source: str | None,
     artifact: Any = None,
     progress: ProgressReporter | None = None,
+    phonetic_metadata: dict[str, Any] | None = None,
 ) -> BenchmarkRunResult:
     if progress is not None:
         progress.stage(spec.lexicon_id, "failed", f"{status}: {error}")
@@ -127,6 +134,7 @@ def _summary_for_failure(
         report_threshold=spec.report_threshold,
         strong_threshold=spec.strong_threshold,
         catalog_metadata={"source": catalog_source},
+        phonetic_metadata=phonetic_metadata,
         status=status,
     )
     summary["error"] = error
@@ -181,6 +189,28 @@ def run_spec(
             progress=progress,
         )
     progress.stage(label, "lexicon", "ready")
+    phonetic_context = create_phonetic_context(artifact.language)
+    progress.stage(
+        label,
+        "phonetic",
+        f"{phonetic_context.status}; language={phonetic_context.requested_language}",
+    )
+    if args.require_phonodist and not phonetic_context.active:
+        return _summary_for_failure(
+            spec,
+            language=artifact.language,
+            status=(
+                "phonetic_profile_unavailable"
+                if phonetic_context.status == "profile_unavailable"
+                else "phonetic_unavailable"
+            ),
+            error=phonetic_context.error or phonetic_context.status,
+            output_dir=output_dir,
+            catalog_source=catalog_source or "configured catalog",
+            artifact=artifact,
+            progress=progress,
+            phonetic_metadata=phonetic_context.as_dict(),
+        )
 
     progress.stage(label, "word list", "preparing")
     try:
@@ -248,10 +278,16 @@ def run_spec(
             ignore_stress=args.ignore_stress,
             strong_threshold=args.strong_threshold,
             progress=progress,
+            phonetic_context=phonetic_context,
             progress_lexicon_id=label,
         )
     finally:
         engine.close()
+    attach_phonetic_explanations(
+        rows,
+        context=phonetic_context,
+        report_threshold=args.report_threshold,
+    )
 
     metadata = dict(resolution.metadata or {})
     catalog_metadata = {
@@ -289,17 +325,24 @@ def run_spec(
         reference_relationship=provider_info.relationship,
         catalog_metadata=catalog_metadata,
         word_list_metadata=word_metadata,
+        phonetic_metadata=phonetic_context.as_dict(),
         module=spec.lexicon_id,
     )
     progress.stage(label, "reports", "writing")
     write_reports(output_dir, rows, summary)
     coverage = summary["coverage"]
     comparison = summary["comparison"]
+    phonetic = comparison.get("phonetic", {})
+    phonetic_status = summary.get("phonetic", {}).get("status", "not_run")
     progress.stage(
         label,
         "completed",
-        f"{coverage['found']}/{coverage['tested']} found; {comparison['compared']} compared; "
-        f"mean broad distance={comparison['mean_broad_distance']}",
+        f"{coverage['found']}/{coverage['tested']} found; "
+        f"{comparison['compared']} legacy compared; "
+        f"{phonetic.get('compared', 0)} phonetic compared; "
+        f"mean broad distance={comparison['mean_broad_distance']}; "
+        f"mean phonetic distance={phonetic.get('mean_distance')}; "
+        f"phonetic={phonetic_status}",
     )
     return BenchmarkRunResult("completed", summary, tuple(rows))
 
@@ -318,10 +361,15 @@ def main_for(spec: BenchmarkSpec, argv: Sequence[str] | None = None) -> int:
     summary = result.summary
     coverage = summary["coverage"]
     comparison = summary["comparison"]
+    phonetic = comparison.get("phonetic", {})
+    phonetic_status = summary.get("phonetic", {}).get("status", "not_run")
     print(
         f"{spec.lexicon_id}: {result.status}; "
         f"{coverage['found']}/{coverage['tested']} found; "
-        f"{comparison['compared']} compared; "
-        f"mean broad distance={comparison['mean_broad_distance']}"
+        f"{comparison['compared']} legacy compared; "
+        f"{phonetic.get('compared', 0)} phonetic compared; "
+        f"mean broad distance={comparison['mean_broad_distance']}; "
+        f"mean phonetic distance={phonetic.get('mean_distance')}; "
+        f"phonetic={phonetic_status}"
     )
     return 0 if result.status == "completed" else 2

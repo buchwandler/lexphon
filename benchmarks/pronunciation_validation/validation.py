@@ -9,6 +9,7 @@ from lexphon.providers import PronunciationProvider
 
 from .distance import classify_distance, normalize_broad_ipa, pronunciation_distance
 from .model import ProviderSpec, RankedWord
+from .phonetic import PhoneticContext, compare_variants
 from .progress import ProgressReporter
 from .references import generate_references
 
@@ -40,6 +41,15 @@ def _empty_row(item: RankedWord, provider: PronunciationProvider) -> dict[str, A
         "broad_edits": None,
         "broad_denominator": None,
         "classification": None,
+        "phonetic_status": "not_run",
+        "phonetic_best_variant_index": None,
+        "phonetic_distance": None,
+        "phonetic_raw_cost": None,
+        "phonetic_denominator": None,
+        "phonetic_selector_disagrees": None,
+        "phonetic_error": None,
+        "phonetic_variant_results": [],
+        "phonetic_operations": None,
     }
 
 
@@ -52,6 +62,7 @@ def collect_validation_rows(
     provider_info: ProviderSpec | None = None,
     ignore_stress: bool = False,
     strong_threshold: float = 0.50,
+    phonetic_context: PhoneticContext | None = None,
     progress: ProgressReporter | None = None,
     progress_lexicon_id: str | None = None,
 ) -> list[dict[str, Any]]:
@@ -81,13 +92,17 @@ def collect_validation_rows(
                     suffix=f"{len(found_rows)} found; {lookup_errors} lookup errors",
                 )
             continue
-        if token is not None and getattr(token, "variants", ()):
+        variants = getattr(token, "variants", None) if token is not None else None
+        if variants:
             row["found"] = True
             row["status"] = "found"
             row["matched_key"] = getattr(token, "matched_key", None)
-            variants = tuple(getattr(variant, "pronunciation", "") for variant in token.variants)
+            pronunciation_variants = variants
+            variants = tuple(
+                getattr(variant, "pronunciation", "") for variant in pronunciation_variants
+            )
             source_variants = tuple(
-                getattr(variant, "source_pronunciation", "") for variant in token.variants
+                getattr(variant, "source_pronunciation", "") for variant in pronunciation_variants
             )
             row["lexicon_variants"] = list(variants)
             row["lexicon_source_pronunciations"] = list(source_variants)
@@ -175,6 +190,43 @@ def collect_validation_rows(
         row["classification"] = classify_distance(
             broad[best_index].normalized, strong_threshold=strong_threshold
         )
+        if phonetic_context is not None:
+            row["phonetic_status"] = phonetic_context.status
+            row["phonetic_error"] = phonetic_context.error
+            if phonetic_context.active:
+                phonetic_results = compare_variants(
+                    tuple(row["lexicon_variants"]),
+                    reference.ipa or "",
+                    context=phonetic_context,
+                )
+                row["phonetic_variant_results"] = list(phonetic_results)
+                successful = [result for result in phonetic_results if result["status"] == "ok"]
+                if successful:
+                    best = min(
+                        successful,
+                        key=lambda result: (
+                            result["distance"],
+                            result["raw_cost"],
+                            result["index"],
+                        ),
+                    )
+                    row["phonetic_status"] = "ok"
+                    row["phonetic_best_variant_index"] = best["index"]
+                    row["phonetic_distance"] = best["distance"]
+                    row["phonetic_raw_cost"] = best["raw_cost"]
+                    row["phonetic_denominator"] = best["denominator"]
+                    row["phonetic_selector_disagrees"] = (
+                        row["best_variant_index"] is not None
+                        and row["best_variant_index"] != best["index"]
+                    )
+                else:
+                    errors = [result["error"] for result in phonetic_results if result.get("error")]
+                    row["phonetic_status"] = "unsupported_ipa"
+                    if errors:
+                        row["phonetic_error"] = (
+                            f"{len(errors)}/{len(phonetic_results)} variants unsupported; "
+                            f"first error: {errors[0]}"
+                        )
         if progress is not None:
             progress.counter(
                 label,

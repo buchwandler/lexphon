@@ -161,7 +161,7 @@ def generate_references(
         except Exception as error:  # noqa: BLE001
             _stage(progress, label, f"batch provider failed: {_error_text(error)}")
             _stage(progress, label, f"falling back to individual calls for {len(values)} words")
-            results: dict[str, ReferenceResult] = {}
+            results = {}
             for current, word in enumerate(values, 1):
                 results[word] = _call_reference(provider, word, language, version=version)
                 if progress is not None:

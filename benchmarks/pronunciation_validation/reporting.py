@@ -8,9 +8,11 @@ from collections.abc import Iterable, Sequence
 from pathlib import Path
 from typing import Any
 
-from .distance import BAND_LIMITS, SEVERITY, comparison_metrics
+from .distance import BAND_LIMITS, SEVERITY
+from .distance import comparison_metrics as legacy_comparison_metrics
+from .phonetic import phonetic_comparison_metrics
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 CSV_FIELDS = (
     "rank",
     "word",
@@ -25,6 +27,15 @@ CSV_FIELDS = (
     "minimum_exact_distance",
     "broad_distance",
     "classification",
+    "phonetic_status",
+    "phonetic_lexicon_ipa",
+    "phonetic_best_variant_index",
+    "phonetic_distance",
+    "phonetic_raw_cost",
+    "phonetic_denominator",
+    "phonetic_selector_disagrees",
+    "phonetic_error",
+    "phonetic_operations",
     "reference",
     "reference_version",
     "reference_language",
@@ -39,7 +50,7 @@ def _percentage(value: int, total: int) -> float:
 
 
 def _comparison_counts(rows: Sequence[dict[str, Any]]) -> dict[str, Any]:
-    return comparison_metrics(rows)
+    return legacy_comparison_metrics(rows)
 
 
 def _band_rows(rows: Sequence[dict[str, Any]], limit: int) -> list[dict[str, Any]]:
@@ -66,6 +77,7 @@ def build_summary(
     reference_relationship: str = "unknown",
     catalog_metadata: dict[str, Any] | None = None,
     word_list_metadata: dict[str, Any] | None = None,
+    phonetic_metadata: dict[str, Any] | None = None,
     module: str | None = None,
     status: str = "completed",
 ) -> dict[str, Any]:
@@ -82,9 +94,10 @@ def build_summary(
             "missing": len(band) - band_found,
             "coverage_percentage": _percentage(band_found, len(band)),
         }
-        comparison_bands[f"top_{limit}"] = _comparison_counts(
-            [row for row in band if row.get("broad_distance") is not None]
-        )
+        comparison_bands[f"top_{limit}"] = {
+            **_comparison_counts([row for row in band if row.get("broad_distance") is not None]),
+            "phonetic": phonetic_comparison_metrics(band),
+        }
     metadata = lexicon_metadata or {}
     provider_name = provider_name or next(
         (row.get("reference") for row in rows if row.get("reference")), None
@@ -98,11 +111,20 @@ def build_summary(
         "source_encoding": provider_encoding,
         "relationship": reference_relationship,
     }
-    comparison = {**_comparison_counts(rows), "bands": comparison_bands}
+    phonetic_data = phonetic_metadata or {
+        "status": "not_run",
+        "requested_language": language,
+    }
+    comparison = {
+        **_comparison_counts(rows),
+        "phonetic": phonetic_comparison_metrics(list(rows)),
+        "bands": comparison_bands,
+    }
     return {
         "schema_version": SCHEMA_VERSION,
         "status": status,
         "benchmark": {"lexicon_id": lexicon, "language": language, "module": module},
+        "phonetic": phonetic_data,
         "catalog": {
             "source": catalog_data.get("source"),
             "data_version": catalog_data.get("data_version", metadata.get("data_version")),
@@ -188,7 +210,7 @@ def _reported_rows(
     return sorted(
         selected,
         key=lambda row: (
-            -SEVERITY.get(row.get("classification"), -1),
+            -SEVERITY.get(row.get("classification") or "", -1),
             -float(row["broad_distance"]),
             row["rank"],
             row["word"],
@@ -199,6 +221,8 @@ def _reported_rows(
 def _csv_row(row: dict[str, Any]) -> dict[str, Any]:
     variants = row.get("lexicon_variants", [])
     index = row.get("best_variant_index")
+    phonetic_index = row.get("phonetic_best_variant_index")
+    operations = row.get("phonetic_operations")
     return {
         "rank": row.get("rank"),
         "word": row.get("word"),
@@ -213,6 +237,19 @@ def _csv_row(row: dict[str, Any]) -> dict[str, Any]:
         "minimum_exact_distance": row.get("minimum_exact_distance"),
         "broad_distance": row.get("broad_distance"),
         "classification": row.get("classification"),
+        "phonetic_status": row.get("phonetic_status"),
+        "phonetic_lexicon_ipa": (
+            variants[phonetic_index] if variants and phonetic_index is not None else ""
+        ),
+        "phonetic_best_variant_index": phonetic_index,
+        "phonetic_distance": row.get("phonetic_distance"),
+        "phonetic_raw_cost": row.get("phonetic_raw_cost"),
+        "phonetic_denominator": row.get("phonetic_denominator"),
+        "phonetic_selector_disagrees": row.get("phonetic_selector_disagrees"),
+        "phonetic_error": row.get("phonetic_error") or "",
+        "phonetic_operations": json.dumps(operations, ensure_ascii=False, separators=(",", ":"))
+        if operations is not None
+        else "",
         "reference": row.get("reference") or "",
         "reference_version": row.get("reference_version") or "",
         "reference_language": row.get("reference_language") or "",
@@ -249,10 +286,18 @@ def write_reports(
         "missing": output_dir / "missing.csv",
         "reference_errors": output_dir / "reference_errors.csv",
         "rows": output_dir / "rows.jsonl",
+        "selector_disagreements": output_dir / "selector_disagreements.csv",
     }
     write_summary(paths["summary"], summary)
     write_mismatches(
         paths["mismatches"], rows, report_threshold=summary["reporting"]["report_threshold"]
+    )
+    write_csv(
+        paths["selector_disagreements"],
+        sorted(
+            (row for row in rows if row.get("phonetic_selector_disagrees") is True),
+            key=lambda row: (row.get("rank", 0), row.get("word", "")),
+        ),
     )
     write_csv(paths["missing"], [row for row in rows if not row.get("found")])
     write_csv(

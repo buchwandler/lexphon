@@ -34,9 +34,9 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - run: python -m pip install -e ".[dev]"
-      - run: ruff check lexphon tests
-      - run: ruff format --check lexphon tests
-      - run: mypy lexphon
+      - run: ruff check lexphon benchmarks/pronunciation_validation tests
+      - run: ruff format --check lexphon benchmarks/pronunciation_validation tests
+      - run: mypy lexphon benchmarks/pronunciation_validation
       - run: pytest
 
   lower-bound:
@@ -47,9 +47,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
-      - run: python -m pip install "g2lex==0.1.8" pytest ruff
+      - run: python -m pip install "g2lex==0.1.8" "phonodist>=0.1,<0.2" pytest ruff
       - run: python -m pip install --no-deps -e .
-      - run: ruff check lexphon tests
+      - run: ruff check lexphon benchmarks/pronunciation_validation tests
       - run: pytest tests/test_production.py::test_current_g2lex_v1_fixture_opens
       - run: pytest
 

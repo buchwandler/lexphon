@@ -20,6 +20,43 @@ class DistanceResult:
 
 
 @dataclass(frozen=True, slots=True)
+class PhoneticProvenance:
+    status: str
+    requested_language: str
+    library: str | None = None
+    library_version: str | None = None
+    metric: str | None = None
+    metric_version: str | None = None
+    profile: str | None = None
+    profile_version: str | None = None
+    backend: str | None = None
+    backend_version: str | None = None
+    feature_set: str | None = None
+    stress_policy: str | None = None
+    error: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class PhoneticVariantResult:
+    index: int
+    status: str
+    distance: float | None = None
+    raw_cost: float | None = None
+    denominator: float | None = None
+    error: str | None = None
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "index": self.index,
+            "status": self.status,
+            "distance": self.distance,
+            "raw_cost": self.raw_cost,
+            "denominator": self.denominator,
+            "error": self.error,
+        }
+
+
+@dataclass(frozen=True, slots=True)
 class ReferenceResult:
     status: str
     ipa: str | None = None

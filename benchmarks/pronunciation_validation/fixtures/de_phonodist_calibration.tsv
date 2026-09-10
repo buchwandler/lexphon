@@ -1,0 +1,61 @@
+id	source_ipa	target_ipa	expected_relation	reason	origin	notes
+luftwaffenstuetzpunkt	ˈlʊftvafn̩ˌʃtʏt͡spʊŋkt	lˈʊftvˌafənʃtˌʏt‍spʊŋkt	equivalent_notation	stress and syllabic nasal notation	canonical motivated case	legacy broad distance is representation-sensitive
+notation-01	t͡s aɪ̯	͡saɪ̯	equivalent_notation	affricate segmentation	German affricate notation
+notation-02	ʃtʁaːsə	ʃtʁaːsə	equivalent_notation	identical IPA	identity control
+notation-03	ˈʃtʁaːsə	ʃtʁaːsə	equivalent_notation	stress marker ignored by feature metric	stress case
+notation-04	ʃt͡ʁaːsə	ʃtʁaːsə	equivalent_notation	affricate tie bar notation	German notation
+notation-05	p͡faɪ̯fən	pfaɪ̯fən	equivalent_notation	affricate segmentation	German notation
+notation-06	ʃtʏt͡spʊŋkt	ʃtʏtspʊŋkt	equivalent_notation	affricate segmentation	German notation
+notation-07	ʃʏlər	ʃʏlɐ	equivalent_notation	unstressed vowel notation	German vowel reduction	close only if profile rule supports it
+notation-08	ˈʔaɪ̯nə	ʔaɪ̯nə	equivalent_notation	stress marker	stress case
+notation-09	ˈaɪ̯nə	ˈʔaɪ̯nə	equivalent_notation	optional glottal onset	German onset variation
+notation-10	ˈʃvaːrt͡s	ʃvaːrts	equivalent_notation	stress and affricate notation	German notation
+variant-01	ˈhaʊ̯s	ˈhaʊs	common_variant	diphthong diacritic	German lexicon variant
+variant-02	ˈʁoːt	ˈʀoːt	common_variant	IPA rhotic variant	German rhotic variation
+variant-03	ˈɡeːn	ˈgeːn	common_variant	g symbol variant	IPA symbol variant
+variant-04	ˈçɪç	ˈçɪç	common_variant	identical common form	lexicon duplicate
+variant-05	ˈmʏnçn̩	ˈmʏnçən	common_variant	syllabic nasal versus schwa nasal	German reduction
+variant-06	ˈʃvaɪ̯nə	ˈʃvaɪnə	common_variant	diphthong segmentation	German lexicon variant
+variant-07	ˈʔɔʏ̯ɡən	ˈɔʏɡən	common_variant	optional glottal onset	German onset variation
+variant-08	ˈʃtʁaːsə	ˈʃtʁaːsɐ	common_variant	final schwa quality	German vowel reduction
+variant-09	ˈɪç	ˈɪç	common_variant	identity control	common pronunciation
+variant-10	ˈkʊmən	ˈkʊm̩	common_variant	syllabic nasal reduction	German reduction
+close-01	ˈbʁuːdəʁ	ˈbʁuːdɐ	close_difference	final vowel reduction	German pronunciation
+close-02	ˈʃtʏt͡spʊŋkt	ˈʃtʏtspʊŋt	close_difference	final consonant voicing notation	German pronunciation
+close-03	ˈɡʁoːsə	ˈɡʁoːsɐ	close_difference	unstressed vowel quality	German pronunciation
+close-04	ˈʃnɛlɐ	ˈʃnɛlə	close_difference	unstressed vowel quality	German pronunciation
+close-05	ˈʃʊlə	ˈʃʊlɐ	close_difference	unstressed vowel quality	German pronunciation
+close-06	ˈʁaɪ̯çən	ˈʁaɪ̯çn̩	close_difference	schwa syllabic nasal reduction	German pronunciation
+close-07	ˈʃtʁaːsən	ˈʃtʁaːsn̩	close_difference	final syllabic nasal reduction	German pronunciation
+close-08	ˈhʊndə	ˈhʊndɐ	close_difference	unstressed vowel quality	German pronunciation
+close-09	ˈlɛçɐlɪç	ˈlɛçəlɪç	close_difference	unstressed schwa realization	German pronunciation
+close-10	ˈʔaɪ̯nmaːl	ˈaɪ̯nmaːl	close_difference	optional glottal onset	German pronunciation
+close-11	ˈʃpʁaːxə	ˈʃpʁaːχə	close_difference	final fricative realization	German pronunciation
+close-12	ˈvɛlt	ˈvɛɫt	close_difference	lateral realization	German pronunciation
+close-13	ˈʁaːt	ˈʁaːd	close_difference	final obstruent voicing	German pronunciation
+close-14	ˈliːbə	ˈliːbɐ	close_difference	unstressed vowel quality	German pronunciation
+close-15	ˈʃtʏkə	ˈʃtʏkɐ	close_difference	unstressed vowel quality	German pronunciation
+material-01	ˈhaʊ̯s	ˈmaʊ̯s	material_difference	initial consonant substitution	deliberate wrong pronunciation
+material-02	ˈʃtʁaːsə	ˈʃtʁaːsəʁ	material_difference	extra final segment	deliberate wrong pronunciation
+material-03	ˈkɪnd	ˈkɪntə	material_difference	insertion and voicing change	deliberate wrong pronunciation
+material-04	ˈʃvaːʁts	ˈʃvaːʁt͡sə	material_difference	final syllable insertion	deliberate wrong pronunciation
+material-05	ˈbʁuːdəʁ	ˈbʁuːd	material_difference	missing final syllable	deliberate wrong pronunciation
+material-06	ˈlʊft	ˈlʊftə	material_difference	final vowel insertion	deliberate wrong pronunciation
+material-07	ˈɡaːʁtən	ˈɡaːʁdən	material_difference	medial consonant substitution	deliberate wrong pronunciation
+material-08	ˈʃtʏt͡spʊŋkt	ˈʃtʏt͡sbʊŋkt	material_difference	voicing substitution	deliberate wrong pronunciation
+material-09	ˈʁeːdən	ˈʁeːtən	material_difference	medial voicing substitution	deliberate wrong pronunciation
+material-10	ˈaɪ̯nə	ˈaɪ̯n	material_difference	missing final vowel	shortened pronunciation
+strong-01	ˈhaʊ̯s	ˈʃtʁaːsə	strong_difference	unrelated word pronunciation	deliberate strong error
+strong-02	ˈmʊtɐ	ˈvɔɐt	strong_difference	multiple segment substitutions	strong multi-phone error
+strong-03	ˈkɪndɐ	ˈʃvaɪ̯nə	strong_difference	unrelated segment sequence	strong multi-phone error
+strong-04	ˈlʊftvafn̩	ˈbʁuːdəʁ	strong_difference	multiple substitutions and deletion	strong multi-phone error
+strong-05	ˈʃtʏt͡spʊŋkt	ˈhaʊ̯s	strong_difference	compound versus monosyllable	strong length difference
+strong-06	ˈɡʁoːsə	ˈkɪndɐ	strong_difference	unrelated segment sequence	strong multi-phone error
+strong-07	ˈʁaɪ̯çən	ˈʃpʁaːxə	strong_difference	multiple consonant substitutions	strong multi-phone error
+strong-08	ˈʃvaːʁts	ˈmʊtɐ	strong_difference	unrelated segment sequence	strong multi-phone error
+strong-09	ˈbʁuːdəʁ	ˈlʊftvafn̩ˌʃtʏt͡spʊŋkt	strong_difference	short form versus compound	strong length difference
+strong-10	ˈaɪ̯nmaːl	ˈʃtʁaːsəʁ	strong_difference	multiple substitutions	strong multi-phone error
+strong-11	ˈʃtʁaːsə	ˈkʊmən	strong_difference	multiple substitutions and length difference	strong multi-phone error
+strong-12	ˈʁoːt	ˈʃvaɪ̯nə	strong_difference	unrelated segment sequence	strong multi-phone error
+material-11	ˈmʊtɐ	ˈmʊtə	material_difference	unstressed vowel insertion	short pronunciation error
+close-16	ˈʃtʁaːsə	ˈʃtʁaːzə	close_difference	single fricative voicing variation	German pronunciation

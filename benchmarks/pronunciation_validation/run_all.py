@@ -7,6 +7,7 @@ import json
 import sys
 from collections.abc import Sequence
 from pathlib import Path
+from typing import Any
 
 from .catalog import iter_quality_benchmark_artifacts, load_benchmark_catalog
 from .model import BenchmarkPaths, BenchmarkSpec
@@ -32,7 +33,7 @@ def run_matrix(
     runner_args: Sequence[str] = (),
     output_root: Path | None = None,
     progress: ProgressReporter | None = None,
-) -> dict[str, object]:
+) -> dict[str, Any]:
     reporter = progress or ProgressReporter()
     results = []
     total = len(specs)
@@ -44,6 +45,8 @@ def run_matrix(
         result = run_spec(spec, args, progress=reporter)
         comparison = result.summary.get("comparison", {})
         coverage = result.summary.get("coverage", {})
+        phonetic = comparison.get("phonetic", {})
+        phonetic_metadata = result.summary.get("phonetic", {})
         results.append(
             {
                 "lexicon_id": spec.lexicon_id,
@@ -51,10 +54,17 @@ def run_matrix(
                 "coverage_percentage": coverage.get("coverage_percentage", 0.0),
                 "compared": comparison.get("compared", 0),
                 "mean_broad_distance": comparison.get("mean_broad_distance"),
+                "phonetic_status": phonetic_metadata.get("status", "not_run"),
+                "phonetic_compared": phonetic.get("compared", 0),
+                "mean_phonetic_distance": phonetic.get("mean_distance"),
+                "phonetic_selector_disagreement_rate": phonetic.get(
+                    "selector_disagreement_rate", 0.0
+                ),
+                "phonetic_unsupported_ipa": phonetic.get("unsupported_ipa", 0),
                 "strong_disagreement_rate": comparison.get("strong_disagreement_rate", 0.0),
             }
         )
-    return {"schema_version": 1, "benchmarks": results}
+    return {"schema_version": 2, "benchmarks": results}
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -76,6 +86,11 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--strong-threshold", type=float, default=0.50)
     parser.add_argument("--ignore-stress", action="store_true")
     parser.add_argument("--no-install", action="store_true")
+    parser.add_argument(
+        "--require-phonodist",
+        action="store_true",
+        help="require Phonodist and language-specific profiles for selected benchmarks",
+    )
     parser.add_argument("--quiet", action="store_true", help="Suppress benchmark progress output.")
     return parser
 
@@ -121,6 +136,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         ("--offline", args.offline),
         ("--ignore-stress", args.ignore_stress),
         ("--no-install", args.no_install),
+        ("--require-phonodist", args.require_phonodist),
     ):
         if enabled:
             runner_args.append(flag)

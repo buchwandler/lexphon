@@ -16,8 +16,9 @@ dependencies = ["g2lex>=0.1.8,<0.2", "tomli>=2; python_version < '3.11'"]
 [project.optional-dependencies]
 espeak = [] # Uses the system espeak-ng or espeak executable.
 goruut = ["pygoruut>=0.6.5,<0.7"]
+validation = ["phonodist>=0.1,<0.2"]
 all = ["pygoruut>=0.6.5,<0.7"]
-dev = ["mypy>=1.11", "pytest>=8", "pytest-cov>=5", "ruff>=0.16", "build>=1"]
+dev = ["mypy>=1.11", "pytest>=8", "pytest-cov>=5", "ruff>=0.16", "build>=1", "phonodist>=0.1,<0.2"]
 
 [project.scripts]
 lexphon = "lexphon.cli:main"
