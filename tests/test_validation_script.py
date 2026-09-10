@@ -28,6 +28,7 @@ _validation = SimpleNamespace(
     load_ranked_words=load_ranked_words,
 )
 
+
 class FakeEngine:
     def __init__(self, values: dict[str, object]) -> None:
         self.values = values
@@ -149,7 +150,11 @@ def test_download_adapter_is_explicit_and_records_ranked_cache(
 
     monkeypatch.setattr(wordlists.urllib.request, "urlopen", lambda *_args, **_kwargs: Response())
     source = WordListSpec(
-        id="fixture", language="de", url="https://example.test/words", revision="test", format="word"
+        id="fixture",
+        language="de",
+        url="https://example.test/words",
+        revision="test",
+        format="word",
     )
     result = ensure_word_list(source, tmp_path)
     assert result.source_path.read_text(encoding="utf-8") == "1\tHaus\n2\tDie\n"

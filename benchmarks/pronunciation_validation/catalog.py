@@ -34,7 +34,9 @@ def is_quality_benchmark_artifact(artifact: CatalogArtifact) -> bool:
 
 
 def iter_quality_benchmark_artifacts(catalog: Catalog) -> tuple[CatalogArtifact, ...]:
-    return tuple(artifact for artifact in catalog.artifacts if is_quality_benchmark_artifact(artifact))
+    return tuple(
+        artifact for artifact in catalog.artifacts if is_quality_benchmark_artifact(artifact)
+    )
 
 
 def is_supported_encoding(encoding: str) -> bool:
@@ -65,7 +67,9 @@ def provision_artifact(
         return CatalogResolution("ready", artifact, metadata, path)
     except LexiconNotInstalledError:
         if not install or offline:
-            return CatalogResolution("lexicon_not_installed", artifact, error="lexicon is not installed")
+            return CatalogResolution(
+                "lexicon_not_installed", artifact, error="lexicon is not installed"
+            )
     except DataIntegrityError as error:
         return CatalogResolution("lexicon_integrity_failed", artifact, error=str(error))
 

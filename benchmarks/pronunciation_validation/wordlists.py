@@ -12,9 +12,47 @@ from .model import RankedWord, WordListResult, WordListSpec
 
 _SOURCE_URL = "https://raw.githubusercontent.com/hermitdave/FrequencyWords/master/content/2018/{language}/{language}_50k.txt"
 _LANGUAGES = (
-    "ar", "az", "bg", "ca", "ceb", "cs", "de", "el", "en", "es", "fr", "ga", "he", "hi",
-    "hu", "hy", "id", "it", "ja", "ko", "ku", "la", "lt", "lv", "mr", "ms", "nl",
-    "pl", "pt", "ro", "ru", "sv", "ta", "te", "th", "tl", "tr", "uk", "ur", "vi", "zh",
+    "ar",
+    "az",
+    "bg",
+    "ca",
+    "ceb",
+    "cs",
+    "de",
+    "el",
+    "en",
+    "es",
+    "fr",
+    "ga",
+    "he",
+    "hi",
+    "hu",
+    "hy",
+    "id",
+    "it",
+    "ja",
+    "ko",
+    "ku",
+    "la",
+    "lt",
+    "lv",
+    "mr",
+    "ms",
+    "nl",
+    "pl",
+    "pt",
+    "ro",
+    "ru",
+    "sv",
+    "ta",
+    "te",
+    "th",
+    "tl",
+    "tr",
+    "uk",
+    "ur",
+    "vi",
+    "zh",
 )
 
 WORD_LISTS = {
@@ -52,7 +90,11 @@ def _sha256(path: Path) -> str:
 
 def _clean_word(value: str) -> str | None:
     word = value.strip()
-    if not word or any(char.isspace() for char in word) or any(char in word for char in "0123456789"):
+    if (
+        not word
+        or any(char.isspace() for char in word)
+        or any(char in word for char in "0123456789")
+    ):
         return None
     return word
 
@@ -172,7 +214,9 @@ def _download(source: WordListSpec, raw_path: Path) -> bytes:
         with urllib.request.urlopen(source.url, timeout=60) as response:
             payload = response.read()
     except Exception as error:
-        raise RuntimeError(f"unable to download word list {source.id} from {source.url}: {error}") from error
+        raise RuntimeError(
+            f"unable to download word list {source.id} from {source.url}: {error}"
+        ) from error
     raw_path.parent.mkdir(parents=True, exist_ok=True)
     raw_path.write_bytes(payload)
     return payload

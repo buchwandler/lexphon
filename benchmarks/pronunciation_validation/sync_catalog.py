@@ -15,7 +15,7 @@ def _module_text(identifier: str) -> str:
         "from benchmarks.pronunciation_validation.model import BenchmarkSpec\n"
         "from benchmarks.pronunciation_validation.runner import main_for\n\n"
         f"SPEC = BenchmarkSpec(lexicon_id={identifier!r})\n\n"
-        "if __name__ == \"__main__\":\n"
+        'if __name__ == "__main__":\n'
         "    raise SystemExit(main_for(SPEC))\n"
     )
 

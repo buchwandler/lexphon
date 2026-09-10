@@ -39,7 +39,11 @@ def _ipa_units(value: str, *, keep_stress: bool, split_tie_bars: bool) -> tuple[
             continue
 
         unit = char
-        while index < len(value) and unicodedata.combining(value[index]) and value[index] not in TIE_BARS:
+        while (
+            index < len(value)
+            and unicodedata.combining(value[index])
+            and value[index] not in TIE_BARS
+        ):
             unit += value[index]
             index += 1
         if not split_tie_bars and index < len(value) and value[index] in TIE_BARS:
@@ -143,18 +147,26 @@ def comparison_metrics(rows: Sequence[dict[str, Any]]) -> dict[str, Any]:
         "compared": len(comparable),
         "exact_matches": sum(row.get("exact_distance") == 0 for row in comparable),
         "broad_matches": sum(row.get("broad_distance") == 0 for row in comparable),
-        "exact_match_rate": round(sum(row.get("exact_distance") == 0 for row in comparable) / len(comparable), 6)
+        "exact_match_rate": round(
+            sum(row.get("exact_distance") == 0 for row in comparable) / len(comparable), 6
+        )
         if comparable
         else 0.0,
-        "broad_match_rate": round(sum(row.get("broad_distance") == 0 for row in comparable) / len(comparable), 6)
+        "broad_match_rate": round(
+            sum(row.get("broad_distance") == 0 for row in comparable) / len(comparable), 6
+        )
         if comparable
         else 0.0,
         "very_close": sum(row.get("classification") == "very_close" for row in comparable),
         "different": sum(row.get("classification") == "different" for row in comparable),
         "inspect": sum(row.get("classification") == "inspect" for row in comparable),
-        "strong_disagreement": sum(row.get("classification") == "strong_disagreement" for row in comparable),
+        "strong_disagreement": sum(
+            row.get("classification") == "strong_disagreement" for row in comparable
+        ),
         "strong_disagreement_rate": round(
-            sum(row.get("classification") == "strong_disagreement" for row in comparable) / len(comparable), 6
+            sum(row.get("classification") == "strong_disagreement" for row in comparable)
+            / len(comparable),
+            6,
         )
         if comparable
         else 0.0,

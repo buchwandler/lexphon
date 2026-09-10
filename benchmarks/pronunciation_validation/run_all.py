@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from collections.abc import Sequence
 from pathlib import Path
 
 from .catalog import iter_quality_benchmark_artifacts, load_benchmark_catalog
 from .model import BenchmarkPaths, BenchmarkSpec
+from .progress import ProgressReporter
 from .registry import discover_specs
 from .runner import _safe_id, run_spec
 
@@ -20,9 +22,7 @@ def select_specs(
         return tuple(spec for spec in specs if spec.lexicon_id == lexicon)
     if language:
         key = language.casefold().replace("_", "-")
-        return tuple(
-            spec for spec in specs if spec.lexicon_id.split(":", 1)[0].casefold() == key
-        )
+        return tuple(spec for spec in specs if spec.lexicon_id.split(":", 1)[0].casefold() == key)
     return tuple(specs)
 
 
@@ -31,13 +31,17 @@ def run_matrix(
     *,
     runner_args: Sequence[str] = (),
     output_root: Path | None = None,
+    progress: ProgressReporter | None = None,
 ) -> dict[str, object]:
+    reporter = progress or ProgressReporter()
     results = []
-    for spec in specs:
+    total = len(specs)
+    for index, spec in enumerate(specs, 1):
+        reporter.benchmark(index, total, spec.lexicon_id)
         args = list(runner_args)
         if output_root is not None:
             args.extend(["--output-dir", str(output_root / _safe_id(spec.lexicon_id))])
-        result = run_spec(spec, args)
+        result = run_spec(spec, args, progress=reporter)
         comparison = result.summary.get("comparison", {})
         coverage = result.summary.get("coverage", {})
         results.append(
@@ -72,17 +76,30 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--strong-threshold", type=float, default=0.50)
     parser.add_argument("--ignore-stress", action="store_true")
     parser.add_argument("--no-install", action="store_true")
+    parser.add_argument("--quiet", action="store_true", help="Suppress benchmark progress output.")
     return parser
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = _parser().parse_args(argv)
+    reporter = ProgressReporter(enabled=not args.quiet)
     specs = discover_specs()
     if args.catalog:
         catalog = load_benchmark_catalog(args.catalog)
         catalog_ids = {artifact.id for artifact in iter_quality_benchmark_artifacts(catalog)}
         specs = tuple(spec for spec in specs if spec.lexicon_id in catalog_ids)
     specs = select_specs(specs, language=args.language, lexicon=args.lexicon)
+    if not specs:
+        selector = (
+            f"--lexicon {args.lexicon!r}" if args.lexicon else f"--language {args.language!r}"
+        )
+        print(f"no pronunciation benchmarks matched {selector}", file=sys.stderr, flush=True)
+        return 2
+
+    reporter.emit(
+        f"pronunciation validation: {len(specs)} benchmarks selected; "
+        f"limit={args.limit}; reference={args.reference}"
+    )
     output_root = args.output_dir or BenchmarkPaths.default().reports
     runner_args: list[str] = []
     for flag, value in (
@@ -107,7 +124,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     ):
         if enabled:
             runner_args.append(flag)
-    index = run_matrix(specs, runner_args=runner_args, output_root=output_root)
+    try:
+        index = run_matrix(
+            specs, runner_args=runner_args, output_root=output_root, progress=reporter
+        )
+    except KeyboardInterrupt:
+        print("pronunciation validation interrupted by user", file=sys.stderr, flush=True)
+        return 130
     index_path = output_root / "index.json"
     index_path.parent.mkdir(parents=True, exist_ok=True)
     index_path.write_text(json.dumps(index, indent=2, sort_keys=True) + "\n", encoding="utf-8")

@@ -14,19 +14,73 @@ from .catalog import is_quality_benchmark_artifact, iter_quality_benchmark_artif
 from .model import BenchmarkSpec
 
 EXPECTED_PRODUCTION_IDS = (
-    "ar:lexhint", "az:lexhint", "bg:lexhint", "ca:lexhint", "ceb:lexhint", "cs:lexhint",
-    "cs:lexhint-native", "de-de:crane", "de-de:espeak", "de-de:gold", "de-de:lexhint",
-    "de-de:lexhint-native", "de-de:olaph", "el:lexhint", "el:lexhint-native", "en-gb:gold",
-    "en-gb:lexhint", "en-us:cmudict", "en-us:gold", "en-us:lexhint", "es:lexhint",
-    "es:lexhint-native", "fr-fr:gold", "fr:lexhint", "fr:lexhint-native", "ga:lexhint",
-    "he:lexhint", "hi:lexhint", "hu:lexhint", "hy:lexhint", "id:lexhint-native", "it:lexhint",
-    "it:lexhint-native", "ja:lexhint", "ja:lexhint-native", "ko:lexhint", "ko:lexhint-native",
-    "ku:lexhint-native", "la:lexhint", "lt:lexhint", "lv:lexhint", "mr:lexhint",
-    "ms:lexhint-native", "nl:lexhint", "pl:lexhint", "pl:lexhint-native", "pt-br:lexhint",
-    "pt-pt:lexhint", "pt:lexhint", "pt:lexhint-native", "ro:lexhint", "ru:lexhint",
-    "ru:lexhint-native", "sv-se:nst", "sv:lexhint", "ta:lexhint", "te:lexhint",
-    "th:lexhint-native", "tl:lexhint", "tr:lexhint", "tr:lexhint-native", "uk:lexhint",
-    "ur:lexhint", "vi:lexhint", "vi:lexhint-native", "zh:lexhint", "zh:lexhint-native",
+    "ar:lexhint",
+    "az:lexhint",
+    "bg:lexhint",
+    "ca:lexhint",
+    "ceb:lexhint",
+    "cs:lexhint",
+    "cs:lexhint-native",
+    "de-de:crane",
+    "de-de:espeak",
+    "de-de:gold",
+    "de-de:lexhint",
+    "de-de:lexhint-native",
+    "de-de:olaph",
+    "el:lexhint",
+    "el:lexhint-native",
+    "en-gb:gold",
+    "en-gb:lexhint",
+    "en-us:cmudict",
+    "en-us:gold",
+    "en-us:lexhint",
+    "es:lexhint",
+    "es:lexhint-native",
+    "fr-fr:gold",
+    "fr:lexhint",
+    "fr:lexhint-native",
+    "ga:lexhint",
+    "he:lexhint",
+    "hi:lexhint",
+    "hu:lexhint",
+    "hy:lexhint",
+    "id:lexhint-native",
+    "it:lexhint",
+    "it:lexhint-native",
+    "ja:lexhint",
+    "ja:lexhint-native",
+    "ko:lexhint",
+    "ko:lexhint-native",
+    "ku:lexhint-native",
+    "la:lexhint",
+    "lt:lexhint",
+    "lv:lexhint",
+    "mr:lexhint",
+    "ms:lexhint-native",
+    "nl:lexhint",
+    "pl:lexhint",
+    "pl:lexhint-native",
+    "pt-br:lexhint",
+    "pt-pt:lexhint",
+    "pt:lexhint",
+    "pt:lexhint-native",
+    "ro:lexhint",
+    "ru:lexhint",
+    "ru:lexhint-native",
+    "sv-se:nst",
+    "sv:lexhint",
+    "ta:lexhint",
+    "te:lexhint",
+    "th:lexhint-native",
+    "tl:lexhint",
+    "tr:lexhint",
+    "tr:lexhint-native",
+    "uk:lexhint",
+    "ur:lexhint",
+    "vi:lexhint",
+    "vi:lexhint-native",
+    "zh:lexhint",
+    "zh:lexhint-native",
 )
 
 
@@ -63,7 +117,9 @@ def spec_map(specs: Iterable[BenchmarkSpec] | None = None) -> dict[str, Benchmar
     return {spec.lexicon_id: spec for spec in values}
 
 
-def validate_specs(catalog: Catalog | None = None, specs: Iterable[BenchmarkSpec] | None = None) -> list[str]:
+def validate_specs(
+    catalog: Catalog | None = None, specs: Iterable[BenchmarkSpec] | None = None
+) -> list[str]:
     values = tuple(specs if specs is not None else discover_specs())
     issues: list[str] = []
     ids = [spec.lexicon_id for spec in values]
@@ -86,7 +142,9 @@ def validate_specs(catalog: Catalog | None = None, specs: Iterable[BenchmarkSpec
             issues.append(f"stale benchmark module for {identifier}")
         for artifact in catalog.artifacts:
             if not is_quality_benchmark_artifact(artifact) and artifact.id in actual:
-                issues.append(f"fixture or non-pronunciation artifact has benchmark module: {artifact.id}")
+                issues.append(
+                    f"fixture or non-pronunciation artifact has benchmark module: {artifact.id}"
+                )
     return issues
 
 

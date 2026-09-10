@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import sys
 from collections.abc import Sequence
 from dataclasses import replace
 from pathlib import Path
@@ -11,13 +12,9 @@ from typing import Any
 from lexphon import DataStore, Phonemizer
 from lexphon.errors import CatalogError, ProviderError, ProviderUnavailableError
 
-from .catalog import (
-    CatalogResolution,
-    load_benchmark_catalog,
-    provision_artifact,
-    resolve_artifact,
-)
+from .catalog import CatalogResolution, load_benchmark_catalog, provision_artifact, resolve_artifact
 from .model import BenchmarkPaths, BenchmarkRunResult, BenchmarkSpec, WordListResult
+from .progress import ProgressReporter
 from .references import create_reference, provider_spec
 from .reporting import build_summary, write_reports
 from .validation import collect_validation_rows
@@ -29,7 +26,9 @@ def _safe_id(identifier: str) -> str:
 
 
 def _parser(spec: BenchmarkSpec) -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description=f"Run pronunciation benchmark for {spec.lexicon_id}")
+    parser = argparse.ArgumentParser(
+        description=f"Run pronunciation benchmark for {spec.lexicon_id}"
+    )
     parser.add_argument("--catalog")
     parser.add_argument("--data-home", type=Path)
     parser.add_argument("--word-list", type=Path)
@@ -46,6 +45,7 @@ def _parser(spec: BenchmarkSpec) -> argparse.ArgumentParser:
     parser.add_argument("--strong-threshold", type=float, default=spec.strong_threshold)
     parser.add_argument("--ignore-stress", action="store_true", default=spec.ignore_stress)
     parser.add_argument("--no-install", action="store_true")
+    parser.add_argument("--quiet", action="store_true", help="Suppress benchmark progress output.")
     return parser
 
 
@@ -60,13 +60,17 @@ def _validate_args(parser: argparse.ArgumentParser, args: argparse.Namespace) ->
         parser.error("distance thresholds must be non-negative")
 
 
-def _word_list_result(args: argparse.Namespace, spec: BenchmarkSpec, language: str, paths: BenchmarkPaths) -> WordListResult:
+def _word_list_result(
+    args: argparse.Namespace, spec: BenchmarkSpec, language: str, paths: BenchmarkPaths
+) -> WordListResult:
     source = resolve_word_list(spec.word_list_key, language)
     if args.word_list_url:
         source = replace(source, url=args.word_list_url)
     if args.word_list:
         words = tuple(
-            load_ranked_words(args.word_list, limit=args.limit, min_rank=args.min_rank, max_rank=args.max_rank)
+            load_ranked_words(
+                args.word_list, limit=args.limit, min_rank=args.min_rank, max_rank=args.max_rank
+            )
         )
         from .wordlists import _sha256
 
@@ -104,7 +108,10 @@ def _summary_for_failure(
     output_dir: Path,
     catalog_source: str | None,
     artifact: Any = None,
+    progress: ProgressReporter | None = None,
 ) -> BenchmarkRunResult:
+    if progress is not None:
+        progress.stage(spec.lexicon_id, "failed", f"{status}: {error}")
     metadata = {
         "kind": getattr(artifact, "kind", "pronunciation"),
         "phoneme_encoding": getattr(artifact, "phoneme_encoding", None),
@@ -112,63 +119,118 @@ def _summary_for_failure(
         "release_tag": getattr(artifact, "release_tag", None),
     }
     summary = build_summary(
-        (), language=language, lexicon=spec.lexicon_id, lexicon_metadata=metadata,
-        provider_name=spec.reference_name, report_threshold=spec.report_threshold,
-        strong_threshold=spec.strong_threshold, catalog_metadata={"source": catalog_source}, status=status,
+        (),
+        language=language,
+        lexicon=spec.lexicon_id,
+        lexicon_metadata=metadata,
+        provider_name=spec.reference_name,
+        report_threshold=spec.report_threshold,
+        strong_threshold=spec.strong_threshold,
+        catalog_metadata={"source": catalog_source},
+        status=status,
     )
     summary["error"] = error
     write_reports(output_dir, (), summary)
     return BenchmarkRunResult(status, summary)
 
 
-def run_spec(spec: BenchmarkSpec, argv: Sequence[str] | None = None) -> BenchmarkRunResult:
+def run_spec(
+    spec: BenchmarkSpec,
+    argv: Sequence[str] | None = None,
+    *,
+    progress: ProgressReporter | None = None,
+) -> BenchmarkRunResult:
     parser = _parser(spec)
     args = parser.parse_args(argv)
     _validate_args(parser, args)
+    if progress is None:
+        progress = ProgressReporter(enabled=not args.quiet)
+    label = spec.lexicon_id
     paths = BenchmarkPaths.default()
     output_dir = args.output_dir or paths.reports / _safe_id(spec.lexicon_id)
     catalog_source = args.catalog
+    progress.stage(label, "catalog", "resolving artifact")
     try:
         catalog = load_benchmark_catalog(args.catalog)
         artifact = resolve_artifact(catalog, spec.lexicon_id)
-    except (CatalogError, ValueError) as error:  # catalog boundary errors are setup failures
+    except (CatalogError, ValueError) as error:
         return _summary_for_failure(
-            spec, language=spec.reference_language or spec.lexicon_id.split(":", 1)[0],
-            status="lexicon_download_failed", error=str(error), output_dir=output_dir,
+            spec,
+            language=spec.reference_language or spec.lexicon_id.split(":", 1)[0],
+            status="lexicon_download_failed",
+            error=str(error),
+            output_dir=output_dir,
             catalog_source=catalog_source,
+            progress=progress,
         )
 
     store = DataStore(args.data_home or paths.data)
+    progress.stage(label, "lexicon", "verifying/provisioning")
     resolution: CatalogResolution = provision_artifact(
         artifact, store, install=not args.no_install, offline=args.offline
     )
     if resolution.status != "ready":
         return _summary_for_failure(
-            spec, language=artifact.language, status=resolution.status,
-            error=resolution.error or resolution.status, output_dir=output_dir,
-            catalog_source=catalog_source or "configured catalog", artifact=artifact,
+            spec,
+            language=artifact.language,
+            status=resolution.status,
+            error=resolution.error or resolution.status,
+            output_dir=output_dir,
+            catalog_source=catalog_source or "configured catalog",
+            artifact=artifact,
+            progress=progress,
         )
+    progress.stage(label, "lexicon", "ready")
 
+    progress.stage(label, "word list", "preparing")
     try:
         word_list = _word_list_result(args, spec, artifact.language, paths)
     except (OSError, RuntimeError, UnicodeError, ValueError) as error:
         return _summary_for_failure(
-            spec, language=artifact.language, status="word_list_download_failed", error=str(error),
-            output_dir=output_dir, catalog_source=catalog_source or "configured catalog", artifact=artifact,
+            spec,
+            language=artifact.language,
+            status="word_list_download_failed",
+            error=str(error),
+            output_dir=output_dir,
+            catalog_source=catalog_source or "configured catalog",
+            artifact=artifact,
+            progress=progress,
         )
+    progress.stage(label, "word list", f"{word_list.spec.id}; {len(word_list.words)} words")
 
+    progress.stage(label, "reference", f"initializing {args.reference}")
     try:
         provider = create_reference(args.reference)
     except ProviderUnavailableError as error:
         return _summary_for_failure(
-            spec, language=artifact.language, status="reference_unavailable", error=str(error),
-            output_dir=output_dir, catalog_source=catalog_source or "configured catalog", artifact=artifact,
+            spec,
+            language=artifact.language,
+            status="reference_unavailable",
+            error=str(error),
+            output_dir=output_dir,
+            catalog_source=catalog_source or "configured catalog",
+            artifact=artifact,
+            progress=progress,
         )
     except (ProviderError, ValueError) as error:
         return _summary_for_failure(
-            spec, language=artifact.language, status="reference_unavailable", error=str(error),
-            output_dir=output_dir, catalog_source=catalog_source or "configured catalog", artifact=artifact,
+            spec,
+            language=artifact.language,
+            status="reference_unavailable",
+            error=str(error),
+            output_dir=output_dir,
+            catalog_source=catalog_source or "configured catalog",
+            artifact=artifact,
+            progress=progress,
         )
+    provider_info = provider_spec(
+        provider, language=args.reference_language or artifact.language, lexicon_id=artifact.id
+    )
+    progress.stage(
+        label,
+        "reference",
+        f"ready: {provider_info.name}; version={provider_info.version or 'unavailable'}",
+    )
 
     engine = Phonemizer(
         artifact.language,
@@ -182,15 +244,15 @@ def run_spec(spec: BenchmarkSpec, argv: Sequence[str] | None = None) -> Benchmar
             language=args.reference_language or artifact.language,
             engine=engine,
             provider=provider,
+            provider_info=provider_info,
             ignore_stress=args.ignore_stress,
             strong_threshold=args.strong_threshold,
+            progress=progress,
+            progress_lexicon_id=label,
         )
     finally:
         engine.close()
 
-    provider_info = provider_spec(
-        provider, language=args.reference_language or artifact.language, lexicon_id=artifact.id
-    )
     metadata = dict(resolution.metadata or {})
     catalog_metadata = {
         "source": catalog_source or "configured catalog",
@@ -229,12 +291,30 @@ def run_spec(spec: BenchmarkSpec, argv: Sequence[str] | None = None) -> Benchmar
         word_list_metadata=word_metadata,
         module=spec.lexicon_id,
     )
+    progress.stage(label, "reports", "writing")
     write_reports(output_dir, rows, summary)
+    coverage = summary["coverage"]
+    comparison = summary["comparison"]
+    progress.stage(
+        label,
+        "completed",
+        f"{coverage['found']}/{coverage['tested']} found; {comparison['compared']} compared; "
+        f"mean broad distance={comparison['mean_broad_distance']}",
+    )
     return BenchmarkRunResult("completed", summary, tuple(rows))
 
 
 def main_for(spec: BenchmarkSpec, argv: Sequence[str] | None = None) -> int:
-    result = run_spec(spec, argv)
+    try:
+        result = run_spec(spec, argv)
+    except KeyboardInterrupt:
+        print(
+            f"[{spec.lexicon_id}] interrupted during benchmark processing",
+            file=sys.stderr,
+            flush=True,
+        )
+        print("pronunciation validation interrupted by user", file=sys.stderr, flush=True)
+        return 130
     summary = result.summary
     coverage = summary["coverage"]
     comparison = summary["comparison"]

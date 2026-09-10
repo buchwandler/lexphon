@@ -2,18 +2,41 @@
 
 Each module in `lexicons/` declares one production pronunciation asset and delegates execution to the shared runner. The catalog is the inventory source, while demo and membership artifacts are excluded from quality benchmarking.
 
+## Running benchmarks
+
 Run one benchmark:
 
 ```bash
 python -m benchmarks.pronunciation_validation.lexicons.benchmark_de_de_crane
 ```
 
-Run a matrix or an offline rerun:
+Progress is enabled by default. It is written to stderr, flushed immediately, and reports the active benchmark, stage, and bounded counters. Use `--quiet` to suppress transient progress output. The final benchmark result and matrix index message remain on stdout.
+
+The default word-list limit is 50,000 words. A language filter may select multiple lexicons:
 
 ```bash
 python -m benchmarks.pronunciation_validation.run_all --language de-DE
-python -m benchmarks.pronunciation_validation.run_all --offline
 ```
+
+Run exactly one benchmark with a smaller quick smoke list:
+
+```bash
+python -m benchmarks.pronunciation_validation.run_all \
+  --lexicon de-de:crane \
+  --limit 1000
+```
+
+The German matrix can also be smoke-tested with:
+
+```bash
+python -m benchmarks.pronunciation_validation.run_all \
+  --language de-DE \
+  --limit 1000
+```
+
+Use `--offline` to avoid network provisioning. Offline runs require cached word lists and lexicon assets.
+
+## Catalog maintenance
 
 Check catalog drift and create missing declarative modules:
 

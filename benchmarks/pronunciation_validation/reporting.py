@@ -137,7 +137,9 @@ def build_summary(
             "found": found,
             "missing": tested - found,
             "lookup_errors": sum(row.get("status") == "lookup_error" for row in rows),
-            "reference_unavailable": sum(row.get("reference_status") == "unavailable" for row in rows),
+            "reference_unavailable": sum(
+                row.get("reference_status") == "unavailable" for row in rows
+            ),
             "reference_errors": sum(row.get("reference_status") == "error" for row in rows),
             "coverage_percentage": _percentage(found, tested),
             "bands": coverage_bands,
@@ -175,9 +177,13 @@ def _lexphon_version() -> str | None:
         return None
 
 
-def _reported_rows(rows: Iterable[dict[str, Any]], *, report_threshold: float) -> list[dict[str, Any]]:
+def _reported_rows(
+    rows: Iterable[dict[str, Any]], *, report_threshold: float
+) -> list[dict[str, Any]]:
     selected = [
-        row for row in rows if row.get("broad_distance") is not None and row["broad_distance"] > report_threshold
+        row
+        for row in rows
+        if row.get("broad_distance") is not None and row["broad_distance"] > report_threshold
     ]
     return sorted(
         selected,
@@ -225,13 +231,17 @@ def write_csv(path: Path, rows: Iterable[dict[str, Any]]) -> None:
             writer.writerow(_csv_row(row))
 
 
-def write_mismatches(path: Path, rows: Iterable[dict[str, Any]], *, report_threshold: float = 0.30) -> list[dict[str, Any]]:
+def write_mismatches(
+    path: Path, rows: Iterable[dict[str, Any]], *, report_threshold: float = 0.30
+) -> list[dict[str, Any]]:
     reported = _reported_rows(rows, report_threshold=report_threshold)
     write_csv(path, reported)
     return reported
 
 
-def write_reports(output_dir: Path, rows: Sequence[dict[str, Any]], summary: dict[str, Any]) -> dict[str, Path]:
+def write_reports(
+    output_dir: Path, rows: Sequence[dict[str, Any]], summary: dict[str, Any]
+) -> dict[str, Path]:
     output_dir.mkdir(parents=True, exist_ok=True)
     paths = {
         "summary": output_dir / "summary.json",
@@ -241,15 +251,24 @@ def write_reports(output_dir: Path, rows: Sequence[dict[str, Any]], summary: dic
         "rows": output_dir / "rows.jsonl",
     }
     write_summary(paths["summary"], summary)
-    write_mismatches(paths["mismatches"], rows, report_threshold=summary["reporting"]["report_threshold"])
+    write_mismatches(
+        paths["mismatches"], rows, report_threshold=summary["reporting"]["report_threshold"]
+    )
     write_csv(paths["missing"], [row for row in rows if not row.get("found")])
-    write_csv(paths["reference_errors"], [row for row in rows if row.get("reference_status") in {"error", "unavailable"}])
+    write_csv(
+        paths["reference_errors"],
+        [row for row in rows if row.get("reference_status") in {"error", "unavailable"}],
+    )
     with paths["rows"].open("w", encoding="utf-8", newline="") as handle:
         for row in rows:
-            handle.write(json.dumps(row, ensure_ascii=False, sort_keys=True, separators=(",", ":")) + "\n")
+            handle.write(
+                json.dumps(row, ensure_ascii=False, sort_keys=True, separators=(",", ":")) + "\n"
+            )
     return paths
 
 
 def write_summary(path: Path, summary: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(summary, indent=2, sort_keys=True, ensure_ascii=False) + "\n", encoding="utf-8")
+    path.write_text(
+        json.dumps(summary, indent=2, sort_keys=True, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
