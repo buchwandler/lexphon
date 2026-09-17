@@ -14,6 +14,8 @@ Lexphon owns catalog consumption, explicit verified installation, immutable loca
 
 Lexphon owns generic pronunciation providers as well as lexicon pronunciation cleanup. eSpeak and Goruut return raw source pronunciation; Lexphon normalizes it once into clean IPA and structured provenance, including provider, requested provider language, raw source pronunciation, and removed language-control markers. No Kokoro vocabulary conversion or model-specific normalization occurs here.
 
+The eSpeak provider delegates runtime discovery, native/CLI selection, voice resolution, execution, batching, version diagnostics, and cleanup to `espeakng-runtime`. Lexphon retains provider policy, language normalization, U+200D tied IPA selection, raw-output normalization, typed errors, and provenance.
+
 `Phonemizer.lookup_lexicon()` is the lexicon-evidence operation and never invokes a provider. `Phonemizer.lookup()` is the staged pronunciation operation: it first calls `lookup_lexicon()`, then invokes the configured provider only after a lexicon miss. Provider results use `source="provider"` and identify the provider separately.
 Lexphon does not own source acquisition, dataset transformations, licensing transformations, production dictionary build recipes, Kokoro vocabulary, Kokoro stress or rating policy, or hidden downloads. Lexphon must never contain source acquisition or G2Lex build recipes for production dictionaries.
 

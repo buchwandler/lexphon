@@ -92,7 +92,7 @@ python -m pip install "lexphon[espeak]"
 python -m pip install "lexphon[goruut]"
 ```
 
-The eSpeak extra does not install the system executable; provide eSpeak or eSpeak-NG through the operating system. Goruut/Pygoruut may provision its own runtime, so a pre-populated Lexphon data store does not by itself guarantee fully offline provider startup.
+The `espeak` extra installs the `espeakng-runtime` Python adapter. It uses available system eSpeak or eSpeak-NG runtimes and does not install a system executable. Use `lexphon[espeak-bundled]` to additionally install the runtime's bundled native loader. Goruut/Pygoruut may provision its own runtime, so a pre-populated Lexphon data store does not by itself guarantee fully offline provider startup.
 
 Providers are disabled by default. Unknown tokens remain visible to downstream applications.
 
@@ -129,7 +129,7 @@ For example, a provider result such as `(en)fˈIl(de)` is returned as clean `fˈ
 results = engine.lookup_many(["one", "two", "three"])
 ```
 
-When `fallback="espeak"`, the eSpeak provider is batch-capable: `lookup_many()` invokes eSpeak once for the batch of lexicon misses rather than once per token.
+When `fallback="espeak"`, the eSpeak provider is batch-capable: `lookup_many()` sends lexicon misses through one runtime batch call rather than invoking the provider once per token.
 
 Batch output must contain exactly one `str` or `None` result per submitted miss. Lexphon rejects strings, bytes, non-sequences, wrong cardinality, and malformed elements with `ProviderOutputError`. Provider execution failures raise `ProviderExecutionError`; `None` remains a genuine direct miss. All provider output is normalized at the engine boundary.
 

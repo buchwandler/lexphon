@@ -34,7 +34,7 @@ python -m pip install "lexphon[espeak]"
 python -m pip install "lexphon[goruut]"
 ```
 
-The eSpeak extra expects an eSpeak or eSpeak-NG executable supplied by the operating system. Pygoruut may provision its own Goruut runtime.
+The `espeak` extra installs `espeakng-runtime` and uses an available system eSpeak or eSpeak-NG runtime. Install `lexphon[espeak-bundled]` when the runtime's bundled native loader is desired. Pygoruut may provision its own Goruut runtime.
 
 ## Quick start
 

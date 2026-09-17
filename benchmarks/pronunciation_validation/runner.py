@@ -262,27 +262,32 @@ def run_spec(
         f"ready: {provider_info.name}; version={provider_info.version or 'unavailable'}",
     )
 
-    engine = Phonemizer(
-        artifact.language,
-        lexicons=[artifact.id],
-        store=store,
-        fallback=None,
-    )
     try:
-        rows = collect_validation_rows(
-            word_list.words,
-            language=args.reference_language or artifact.language,
-            engine=engine,
-            provider=provider,
-            provider_info=provider_info,
-            ignore_stress=args.ignore_stress,
-            strong_threshold=args.strong_threshold,
-            progress=progress,
-            phonetic_context=phonetic_context,
-            progress_lexicon_id=label,
+        engine = Phonemizer(
+            artifact.language,
+            lexicons=[artifact.id],
+            store=store,
+            fallback=None,
         )
+        try:
+            rows = collect_validation_rows(
+                word_list.words,
+                language=args.reference_language or artifact.language,
+                engine=engine,
+                provider=provider,
+                provider_info=provider_info,
+                ignore_stress=args.ignore_stress,
+                strong_threshold=args.strong_threshold,
+                progress=progress,
+                phonetic_context=phonetic_context,
+                progress_lexicon_id=label,
+            )
+        finally:
+            engine.close()
     finally:
-        engine.close()
+        close = getattr(provider, "close", None)
+        if callable(close):
+            close()
     attach_phonetic_explanations(
         rows,
         context=phonetic_context,

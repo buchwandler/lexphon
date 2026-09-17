@@ -3,7 +3,8 @@ output = "context_lexphon.md"
 keep_docstrings = true
 dedupe = true
 respect_gitignore = true
-exclude = ["*/.venv/*", "context_lexphon.*"]
+exclude = ["*/.venv/*", "context_lexphon.*",
+"**/benchmarks/pronunciation_validation/data/**", "**/benchmarks/pronunciation_validation/reports/**"]
 include = [
   "**/*.py",
   "**/*.toml",

@@ -47,7 +47,7 @@ python -m benchmarks.pronunciation_validation.sync_catalog --write
 
 Generated word lists, reports, and provisioned lexicons are kept under this package and are ignored by Git. The benchmark always constructs Lexphon with an explicit lexicon and `fallback=None`, so normal runtime lookup remains local and download-free. Assets using `kokoro-v1` are reported as `unsupported_encoding`; their bytes are not interpreted as IPA.
 
-Word-list sources are curated in `wordlists.py`. Source URLs, revisions, formats, licensing notes, retrieval timestamps, and downloaded/adapted SHA-256 hashes are included in reports. The initial reference registry enables eSpeak and records when an eSpeak-derived lexicon uses the same source family.
+Word-list sources are curated in `wordlists.py`. Source URLs, revisions, formats, licensing notes, retrieval timestamps, and downloaded/adapted SHA-256 hashes are included in reports. The reference provider is backed by `espeakng-runtime`; benchmark reference versions come from provider runtime diagnostics, and eSpeak-derived lexicons are reported as the same source family.
 
 ## Phonodist validation
 

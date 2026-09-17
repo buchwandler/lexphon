@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import io
-import subprocess
 from types import SimpleNamespace
 
 import pytest
@@ -9,18 +8,14 @@ import pytest
 from benchmarks.pronunciation_validation import run_all, runner
 from benchmarks.pronunciation_validation.model import BenchmarkRunResult, BenchmarkSpec, RankedWord
 from benchmarks.pronunciation_validation.progress import ProgressReporter
-from benchmarks.pronunciation_validation.references import (
-    REFERENCE_VERSION_TIMEOUT_SECONDS,
-    generate_references,
-    reference_version,
-)
+from benchmarks.pronunciation_validation.references import generate_references, reference_version
 from benchmarks.pronunciation_validation.validation import collect_validation_rows
 
 
 class BatchProvider:
     name = "fake-espeak"
     source_encoding = "ipa"
-    executable = "fake-espeak"
+    version = "fake-espeak 1.0"
 
     def __init__(self, values: dict[str, str]) -> None:
         self.values = values
@@ -55,36 +50,20 @@ class FakeEngine:
         )
 
 
-def test_batch_reference_resolves_version_once(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_batch_reference_uses_provider_version_metadata() -> None:
     provider = BatchProvider({"one": "a", "two": "b", "three": "c"})
-    calls: list[tuple[object, dict[str, object]]] = []
-
-    def fake_run(*args: object, **kwargs: object) -> SimpleNamespace:
-        calls.append((args, kwargs))
-        return SimpleNamespace(stdout="fake-espeak 1.0\n", stderr="")
-
-    monkeypatch.setattr("benchmarks.pronunciation_validation.references.subprocess.run", fake_run)
     results = generate_references(("one", "two", "three"), language="de-DE", provider=provider)
 
-    assert len(calls) == 1
+    assert reference_version(provider) == "fake-espeak 1.0"
     assert provider.batch_calls == 1
     assert provider.individual_calls == 0
     assert len(results) == 3
     assert {result.version for result in results.values()} == {"fake-espeak 1.0"}
 
 
-def test_reference_version_timeout_is_non_fatal(monkeypatch: pytest.MonkeyPatch) -> None:
-    seen: dict[str, object] = {}
-
-    def timeout(*_args: object, **kwargs: object) -> object:
-        seen.update(kwargs)
-        raise subprocess.TimeoutExpired("fake-espeak", 1)
-
-    monkeypatch.setattr("benchmarks.pronunciation_validation.references.subprocess.run", timeout)
-    provider = SimpleNamespace(executable="fake-espeak", name="fake", source_encoding="ipa")
-
+def test_reference_version_is_none_without_provider_metadata() -> None:
+    provider = SimpleNamespace(name="fake", source_encoding="ipa")
     assert reference_version(provider) is None
-    assert seen["timeout"] == REFERENCE_VERSION_TIMEOUT_SECONDS
 
 
 def test_batch_fallback_is_reported_and_keeps_results() -> None:

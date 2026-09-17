@@ -27,7 +27,7 @@ python -m pip install "lexphon[espeak]"
 python -m pip install "lexphon[goruut]"
 ```
 
-The eSpeak extra does not install the system executable. Pygoruut may provision its own Goruut runtime. A pre-populated `LEXPHON_DATA_HOME` only removes Lexphon catalog and lexicon downloads; it does not guarantee offline startup of an optional provider.
+The `espeak` extra installs `espeakng-runtime`, which uses available system eSpeak or eSpeak-NG runtimes. `lexphon[espeak-bundled]` additionally installs the runtime's bundled native loader. The explicit `EspeakProvider(executable=...)` compatibility path remains CLI-oriented; applications can request `mode="auto"`, `mode="native"`, or `mode="cli"` directly.
 
 ## KokoroG2P adapter example
 

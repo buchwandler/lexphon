@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import subprocess
 from collections.abc import Sequence
 from typing import Any
 
@@ -14,7 +13,6 @@ from .model import ProviderSpec, ReferenceResult
 from .progress import ProgressReporter
 
 REFERENCE_FACTORIES = {"espeak": EspeakProvider}
-REFERENCE_VERSION_TIMEOUT_SECONDS = 5.0
 
 
 def create_reference(name: str) -> PronunciationProvider:
@@ -26,22 +24,8 @@ def create_reference(name: str) -> PronunciationProvider:
 
 
 def reference_version(provider: PronunciationProvider) -> str | None:
-    executable = getattr(provider, "executable", None)
-    if not executable:
-        return None
-    try:
-        completed = subprocess.run(
-            [str(executable), "--version"],
-            check=False,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            timeout=REFERENCE_VERSION_TIMEOUT_SECONDS,
-        )
-    except (OSError, subprocess.SubprocessError):
-        return None
-    output = (completed.stdout or completed.stderr or "").strip()
-    return output.splitlines()[0] if output else None
+    value = getattr(provider, "version", None)
+    return str(value) if value is not None else None
 
 
 def reference_relationship(lexicon_id: str, provider_name: str) -> str:

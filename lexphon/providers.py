@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import importlib
-import shutil
-import subprocess
 from collections.abc import Sequence
 from typing import Any, Protocol, runtime_checkable
 
@@ -192,36 +190,83 @@ def _raw_output(value: object, provider: str) -> str | None:
     return value or None
 
 
+def _load_espeak_runtime() -> Any:
+    try:
+        return importlib.import_module("espeakng_runtime")
+    except ImportError as error:
+        raise ProviderUnavailableError(
+            "eSpeak provider requires espeakng-runtime; install lexphon with the 'espeak' extra"
+        ) from error
+
+
+_ESPEAK_TIE_CHAR = "\u200d"
+
+
+def _espeak_phonemize_kwargs(language: str) -> dict[str, object]:
+    return {
+        "voice": normalize_language_tag(language),
+        "use_tie": True,
+        "tie_char": _ESPEAK_TIE_CHAR,
+    }
+
+
 class EspeakProvider:
-    """Optional eSpeak/eSpeak-NG raw IPA provider."""
+    """Optional eSpeak/eSpeak-NG raw IPA provider through espeakng-runtime."""
 
     name = "espeak"
     source_encoding = "ipa"
 
-    def __init__(self, executable: str | None = None):
-        executable_path = executable or shutil.which("espeak-ng") or shutil.which("espeak")
-        if not executable_path:
-            raise ProviderUnavailableError(
-                "eSpeak provider requested but espeak-ng/espeak is not installed"
+    def __init__(
+        self,
+        executable: str | None = None,
+        *,
+        mode: str | None = None,
+        library: str | None = None,
+        data: str | None = None,
+        timeout: float | None = None,
+        runtime: object | None = None,
+    ) -> None:
+        self._runtime: Any
+        self._owns_runtime = runtime is None
+        if runtime is not None:
+            self._runtime = runtime
+            return
+
+        effective_mode = mode or ("cli" if executable is not None else "auto")
+        module = _load_espeak_runtime()
+        try:
+            self._runtime = module.EspeakRuntime(
+                mode=effective_mode,
+                executable=executable,
+                library=library,
+                data=data,
+                timeout=timeout,
             )
-        self.executable = executable_path
+        except Exception as error:
+            raise ProviderUnavailableError(
+                f"eSpeak provider could not be initialized: {error}"
+            ) from error
+
+    @property
+    def runtime_info(self) -> object:
+        return self._runtime.info
+
+    @property
+    def executable(self) -> str | None:
+        value = getattr(self.runtime_info, "executable", None)
+        return str(value) if value is not None else None
+
+    @property
+    def version(self) -> str | None:
+        value = getattr(self.runtime_info, "version", None)
+        return str(value) if value is not None else None
 
     def phonemize(self, text: str, language: str) -> str | None:
         try:
-            completed = subprocess.run(
-                [self.executable, "-q", "--ipa=3", "-v", normalize_language_tag(language), text],
-                check=False,
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-            )
-        except (OSError, subprocess.SubprocessError) as error:
+            value = self._runtime.phonemize(text, **_espeak_phonemize_kwargs(language))
+        except Exception as error:
             raise ProviderExecutionError(f"eSpeak provider execution failed: {error}") from error
-        if completed.returncode != 0:
-            raise ProviderExecutionError(
-                f"eSpeak provider exited with status {completed.returncode}"
-            )
-        return _raw_output(completed.stdout, self.name)
+        return _raw_output(value, self.name)
 
     def phonemize_many(
         self,
@@ -232,51 +277,26 @@ class EspeakProvider:
         if not values:
             return ()
 
-        nonempty_indexes: list[int] = []
-        nonempty_values: list[str] = []
-        for index, value in enumerate(values):
-            if "\n" in value or "\r" in value:
-                raise ProviderExecutionError("eSpeak batch inputs must not contain line breaks")
-            if not value or not value.strip():
-                continue
-            nonempty_indexes.append(index)
-            nonempty_values.append(value)
-
-        if not nonempty_values:
-            return tuple(None for _ in values)
-
         try:
-            completed = subprocess.run(
-                [
-                    self.executable,
-                    "-q",
-                    "--ipa=3",
-                    "-v",
-                    normalize_language_tag(language),
-                ],
-                input="\n".join(nonempty_values) + "\n",
-                check=False,
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-            )
-        except (OSError, subprocess.SubprocessError) as error:
-            raise ProviderExecutionError(f"eSpeak provider execution failed: {error}") from error
-        if completed.returncode != 0:
+            outputs = self._runtime.phonemize_many(values, **_espeak_phonemize_kwargs(language))
+        except Exception as error:
             raise ProviderExecutionError(
-                f"eSpeak provider exited with status {completed.returncode}"
-            )
+                f"eSpeak provider batch execution failed: {error}"
+            ) from error
 
-        lines = completed.stdout.splitlines()
-        if len(lines) != len(nonempty_values):
+        if isinstance(outputs, (str, bytes)) or not isinstance(outputs, Sequence):
             raise ProviderOutputError(
-                f"eSpeak batch returned {len(lines)} results for {len(nonempty_values)} inputs"
+                "eSpeak provider returned an invalid batch output; expected a sequence"
             )
+        if len(outputs) != len(values):
+            raise ProviderOutputError(
+                f"eSpeak batch returned {len(outputs)} results for {len(values)} inputs"
+            )
+        return tuple(_raw_output(value, self.name) for value in outputs)
 
-        result: list[str | None] = [None] * len(values)
-        for index, output in zip(nonempty_indexes, lines, strict=True):
-            result[index] = _raw_output(output, self.name)
-        return tuple(result)
+    def close(self) -> None:
+        if self._owns_runtime:
+            self._runtime.close()
 
 
 class GoruutProvider:
