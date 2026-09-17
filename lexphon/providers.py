@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import importlib
 from collections.abc import Sequence
-from typing import Any, Protocol, runtime_checkable
+from typing import Any, Literal, Protocol, runtime_checkable
 
 from .errors import (
     ProviderError,
@@ -151,6 +151,8 @@ _GORUUT_ISO_CODES = frozenset(
         "yue",
     }
 )
+EspeakMode = Literal["auto", "native", "cli"]
+_VALID_MODES = frozenset({"auto", "native", "cli"})
 
 
 def _to_goruut_language(language: str) -> str:
@@ -231,7 +233,8 @@ class EspeakProvider:
         if runtime is not None:
             self._runtime = runtime
             return
-
+        if mode is not None and mode not in _VALID_MODES:
+            raise ValueError(f"invalid eSpeak mode: {mode!r}. Valid modes: {sorted(_VALID_MODES)}")
         effective_mode = mode or ("cli" if executable is not None else "auto")
         module = _load_espeak_runtime()
         try:
@@ -293,6 +296,19 @@ class EspeakProvider:
                 f"eSpeak batch returned {len(outputs)} results for {len(values)} inputs"
             )
         return tuple(_raw_output(value, self.name) for value in outputs)
+
+    def diagnostic_info(self) -> dict[str, object]:
+        """Return runtime diagnostics for debugging."""
+        info = self.runtime_info
+        return {
+            "requested_mode": getattr(info, "mode", None),
+            "implementation": getattr(info, "implementation", None),
+            "version": self.version,
+            "source": getattr(info, "source", None),
+            "executable": self.executable,
+            "library": getattr(info, "library", None),
+            "data": getattr(info, "data", None),
+        }
 
     def close(self) -> None:
         if self._owns_runtime:

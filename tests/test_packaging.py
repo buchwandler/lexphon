@@ -18,7 +18,7 @@ DIST = ROOT / "dist"
 
 def test_phonodist_is_only_an_optional_validation_dependency() -> None:
     project = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
-    assert 'validation = ["phonodist>=0.1,<0.2", "espeakng-runtime>=0.1.1,<0.2"]' in project
+    assert 'validation = ["phonodist>=0.1,<0.2", "espeakng-runtime>=0.1.3,<0.2"]' in project
     runtime = next(line for line in project.splitlines() if line.startswith("dependencies ="))
     assert "phonodist" not in runtime
     assert 'dev = ["mypy' in project and "phonodist>=0.1,<0.2" in project
@@ -28,11 +28,11 @@ def test_espeak_runtime_is_optional_and_available_in_provider_extras() -> None:
     project = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
     runtime = next(line for line in project.splitlines() if line.startswith("dependencies ="))
     assert "espeakng-runtime" not in runtime
-    assert 'espeak = ["espeakng-runtime>=0.1.1,<0.2"]' in project
-    assert 'validation = ["phonodist>=0.1,<0.2", "espeakng-runtime>=0.1.1,<0.2"]' in project
-    assert 'dev = ["mypy' in project and "espeakng-runtime>=0.1.1,<0.2" in project
-    assert 'espeak-bundled = ["espeakng-runtime[bundled]>=0.1.1,<0.2"]' in project
-    assert 'all = ["pygoruut>=0.6.5,<0.7"]' in project
+    assert 'espeak = ["espeakng-runtime>=0.1.3,<0.2"]' in project
+    assert 'validation = ["phonodist>=0.1,<0.2", "espeakng-runtime>=0.1.3,<0.2"]' in project
+    assert 'dev = ["mypy' in project and "espeakng-runtime>=0.1.3,<0.2" in project
+    assert 'espeak-bundled = ["espeakng-runtime[bundled]>=0.1.3,<0.2"]' in project
+    assert 'all = ["pygoruut>=0.6.5,<0.7", "espeakng-runtime>=0.1.3,<0.2"]' in project
 
 
 def _members(path: Path) -> tuple[str, ...]:
