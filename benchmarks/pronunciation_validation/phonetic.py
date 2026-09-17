@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import importlib
 import statistics
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
+from contextlib import contextmanager
 from dataclasses import dataclass
 from types import ModuleType
 from typing import Any
@@ -77,6 +78,37 @@ def _library_version(module: Any) -> str | None:
     return str(value) if value is not None else None
 
 
+class _Utf8Resource:
+    def __init__(self, resource: Any) -> None:
+        self._resource = resource
+
+    def joinpath(self, *segments: str) -> _Utf8Resource:
+        return _Utf8Resource(self._resource.joinpath(*segments))
+
+    def open(self, mode: str = "r", *args: Any, **kwargs: Any) -> Any:
+        kwargs.setdefault("encoding", "utf-8")
+        return self._resource.open(mode, *args, **kwargs)
+
+
+@contextmanager
+def _panphon_utf8_resources() -> Iterator[None]:
+    featuretable: Any = importlib.import_module("panphon.featuretable")
+
+    original_files = featuretable.files
+
+    def utf8_files(package: Any) -> Any:
+        resource = original_files(package)
+        if package == "panphon":
+            return _Utf8Resource(resource)
+        return resource
+
+    featuretable.files = utf8_files
+    try:
+        yield
+    finally:
+        featuretable.files = original_files
+
+
 def create_phonetic_context(
     language: str, *, phonodist_module: ModuleType | None = None
 ) -> PhoneticContext:
@@ -106,7 +138,8 @@ def create_phonetic_context(
             library_version=library_version,
         )
 
-    probe = phonodist_module.pronunciation_distance("", "", language=language, explain=False)
+    with _panphon_utf8_resources():
+        probe = phonodist_module.pronunciation_distance("", "", language=language, explain=False)
     return PhoneticContext(
         status="active",
         requested_language=language,
