@@ -13,13 +13,13 @@ audience: null
 scopes: []
 source_refs: []
 paths:
-- README.md
-- docs/ARCHITECTURE.md
-- docs/MIGRATING_0_2.md
+  - README.md
+  - docs/ARCHITECTURE.md
+  - docs/MIGRATING_0_2.md
 issues: []
 prs: []
 sources:
-- tl:task-0018
+  - tl:task-0018
 contributors: []
 breaking: false
 internal: false

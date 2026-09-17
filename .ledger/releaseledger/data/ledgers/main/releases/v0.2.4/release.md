@@ -8,7 +8,7 @@ version: v0.2.4
 status: released
 history_state: curated
 title: Lexphon 0.2.4
-released_at: '2026-09-17'
+released_at: "2026-09-17"
 previous_version: v0.2.3
 cancel_reason: null
 superseded_by: null
