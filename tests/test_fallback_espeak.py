@@ -11,13 +11,14 @@ from lexphon.providers import EspeakProvider
 class FakeRuntime:
     def __init__(self, output: object = "raw") -> None:
         self.info = SimpleNamespace(
-            executable="/fake/espeak", version="1.2.3", implementation="native"
+            executable="/fake/espeak", version="1.2.3", implementation="native",
+            requested_mode="auto", phoneme_output_api="phonemize", phoneme_parity="exact",
+            exact_clause_api="exact_clause", fallback_code=None, fallback_reason=None,
         )
         self.output = output
         self.scalar_calls: list[tuple[str, dict[str, object]]] = []
         self.batch_calls: list[tuple[tuple[str, ...], dict[str, object]]] = []
         self.closed = False
-
     def phonemize(self, text: str, **kwargs: object) -> object:
         self.scalar_calls.append((text, kwargs))
         return self.output

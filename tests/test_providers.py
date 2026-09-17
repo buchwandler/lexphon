@@ -63,13 +63,18 @@ class TestDiagnosticInfo:
         """diagnostic_info returns a dict."""
         mock_runtime = MagicMock()
         mock_info = MagicMock()
-        mock_info.mode = "auto"
+        mock_info.requested_mode = "auto"
         mock_info.implementation = "native"
         mock_info.version = "1.0"
         mock_info.source = "libespeak-ng"
         mock_info.executable = None
         mock_info.library = "/usr/lib/libespeak-ng.so"
         mock_info.data = "/usr/share/espeak-ng-data"
+        mock_info.phoneme_output_api = "phonemize"
+        mock_info.phoneme_parity = "exact"
+        mock_info.exact_clause_api = "exact_clause"
+        mock_info.fallback_code = None
+        mock_info.fallback_reason = None
         mock_runtime.info = mock_info
         provider = EspeakProvider(runtime=mock_runtime)
         result = provider.diagnostic_info()
@@ -79,13 +84,18 @@ class TestDiagnosticInfo:
         """diagnostic_info dict has expected keys."""
         mock_runtime = MagicMock()
         mock_info = MagicMock()
-        mock_info.mode = "cli"
+        mock_info.requested_mode = "cli"
         mock_info.implementation = "cli"
         mock_info.version = "1.0"
         mock_info.source = "espeak-ng"
         mock_info.executable = "/usr/bin/espeak-ng"
         mock_info.library = None
         mock_info.data = None
+        mock_info.phoneme_output_api = "phonemize"
+        mock_info.phoneme_parity = "exact"
+        mock_info.exact_clause_api = "exact_clause"
+        mock_info.fallback_code = None
+        mock_info.fallback_reason = None
         mock_runtime.info = mock_info
         provider = EspeakProvider(runtime=mock_runtime)
         result = provider.diagnostic_info()
@@ -97,6 +107,11 @@ class TestDiagnosticInfo:
             "executable",
             "library",
             "data",
+            "phoneme_output_api",
+            "phoneme_parity",
+            "exact_clause_api",
+            "fallback_code",
+            "fallback_reason",
         }
         assert set(result.keys()) == expected_keys
 
@@ -104,13 +119,18 @@ class TestDiagnosticInfo:
         """diagnostic_info values come from runtime info."""
         mock_runtime = MagicMock()
         mock_info = MagicMock()
-        mock_info.mode = "auto"
+        mock_info.requested_mode = "auto"
         mock_info.implementation = "native"
         mock_info.version = "1.48"
         mock_info.source = "libespeak-ng"
         mock_info.executable = None
         mock_info.library = "/usr/lib/libespeak-ng.so"
         mock_info.data = "/usr/share/espeak-ng-data"
+        mock_info.phoneme_output_api = "phonemize"
+        mock_info.phoneme_parity = "exact"
+        mock_info.exact_clause_api = "exact_clause"
+        mock_info.fallback_code = "best-effort"
+        mock_info.fallback_reason = "no native clause API"
         mock_runtime.info = mock_info
         provider = EspeakProvider(runtime=mock_runtime)
         result = provider.diagnostic_info()
@@ -121,8 +141,11 @@ class TestDiagnosticInfo:
         assert result["executable"] is None
         assert result["library"] == "/usr/lib/libespeak-ng.so"
         assert result["data"] == "/usr/share/espeak-ng-data"
-
-
+        assert result["phoneme_output_api"] == "phonemize"
+        assert result["phoneme_parity"] == "exact"
+        assert result["exact_clause_api"] == "exact_clause"
+        assert result["fallback_code"] == "best-effort"
+        assert result["fallback_reason"] == "no native clause API"
 class TestLifecycle:
     """EspeakProvider lifecycle contract tests."""
 

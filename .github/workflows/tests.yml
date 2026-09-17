@@ -47,7 +47,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
-      - run: python -m pip install "g2lex==0.1.8" "phonodist>=0.1,<0.2" "espeakng-runtime>=0.1.1,<0.2" pytest ruff
+      - run: python -m pip install "g2lex==0.1.8" "phonodist>=0.1,<0.2" "espeakng-runtime>=0.1.4,<0.2" pytest ruff
       - run: python -m pip install --no-deps -e .
       - run: ruff check lexphon benchmarks/pronunciation_validation tests
       - run: pytest tests/test_production.py::test_current_g2lex_v1_fixture_opens
@@ -55,6 +55,20 @@ jobs:
 
 
   bundled-native:
+
+  native-cli-parity:
+    name: native/CLI provider parity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install eSpeak CLI
+        run: sudo apt-get update && sudo apt-get install -y espeak-ng
+      - run: python -m pip install -e ".[espeak,dev]"
+      - name: Run provider parity tests
+        run: pytest tests/test_espeak_parity.py -v
     name: bundled eSpeak native smoke
     runs-on: ubuntu-latest
     steps:

@@ -121,22 +121,72 @@ with Phonemizer(
 
 For example, a provider result such as `(en)fˈIl(de)` is returned as clean `fˈIl` while retaining `source="provider"`, `provider="espeak"`, `requested_language="de-de"`, the raw `source_pronunciation`, and markers `en@0` and `de@4`.
 
-### Batch lookup and provider contracts
+## KokoroG2P boundary
 
-`lookup_many()` preserves input order and checks every configured lexicon before invoking a provider. A provider receives only the missing tokens, and a runtime-checkable `BatchPronunciationProvider` can handle those misses in one call:
+KokoroG2P should import Lexphon's Python API and configure Lexphon's generic providers when needed. It converts returned IPA using its model-specific vocabulary and applies its own stress, ratings, and diagnostics policy. Lexphon does not import KokoroG2P, perform Kokoro validation, or download dictionaries during phonemization.
+
+## Provider diagnostics
+
+EspeakProvider exposes runtime diagnostics for debugging and validation:
 
 ```python
-results = engine.lookup_many(["one", "two", "three"])
+from lexphon.providers import EspeakProvider
+
+provider = EspeakProvider(mode="auto")
+info = provider.diagnostic_info()
+print(info)
+# {
+#     "requested_mode": "auto",
+#     "implementation": "native",
+#     "version": "1.48",
+#     "source": "libespeak-ng",
+#     "executable": None,
+#     "library": "/usr/lib/libespeak-ng.so",
+#     "data": "/usr/share/espeak-ng-data",
+#     "phoneme_output_api": "phonemize",
+#     "phoneme_parity": "exact",
+#     "exact_clause_api": "exact_clause",
+#     "fallback_code": None,
+#     "fallback_reason": None,
+# }
+provider.close()
 ```
 
-When `fallback="espeak"`, the eSpeak provider is batch-capable: `lookup_many()` sends lexicon misses through one runtime batch call rather than invoking the provider once per token.
+Key diagnostic fields:
 
-Batch output must contain exactly one `str` or `None` result per submitted miss. Lexphon rejects strings, bytes, non-sequences, wrong cardinality, and malformed elements with `ProviderOutputError`. Provider execution failures raise `ProviderExecutionError`; `None` remains a genuine direct miss. All provider output is normalized at the engine boundary.
+- `requested_mode`: The mode requested at construction (auto/native/cli)
+- `implementation`: The actual backend in use (native/cli)
+- `phoneme_output_api`: The API used for phoneme output
+- `phoneme_parity`: Whether native and CLI produce identical output
+- `exact_clause_api`: The API for exact clause output
+- `fallback_code`: Code indicating fallback reason (e.g., best-effort)
+- `fallback_reason`: Human-readable fallback explanation
 
-### Lexicon configuration
+### Provider parity benchmark
 
-`lexicons=None` uses the language profile's default lexicons. Construction raises `LexiconNotInstalledError` when a required default asset is not installed. `lexicons=[]` explicitly selects no lexicon layers and is the provider-only configuration. Use the empty list in provider-only applications and tests when profile defaults should not be opened.
+Compare two provider configurations over an input list:
 
-## KokoroG2P boundary
+```bash
+python benchmarks/provider_parity.py \
+  --provider espeak \
+  --language en-US \
+  --left-mode native \
+  --right-mode cli \
+  --input benchmarks/data/en_provider_parity.txt \
+  --json provider-parity.json \
+  --markdown provider-parity.md
+```
+
+The benchmark reports raw exact equality, runtime diagnostics for both sides, and optionally uses Phonodist for classification when available.
+
+## Parity tests
+
+Run provider parity tests when both native and CLI backends are available:
+
+```bash
+pytest tests/test_espeak_parity.py -v
+```
+
+These tests verify that native, CLI, and auto modes produce identical IPA output for a representative corpus, and that batch operations are consistent with scalar operations.
 
 KokoroG2P should import Lexphon's Python API and configure Lexphon's generic providers when needed. It converts returned IPA using its model-specific vocabulary and applies its own stress, ratings, and diagnostics policy. Lexphon does not import KokoroG2P, perform Kokoro validation, or download dictionaries during phonemization.

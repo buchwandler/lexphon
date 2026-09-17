@@ -80,5 +80,38 @@ python -m benchmarks.pronunciation_validation.run_all \
 ```
 
 Bulk Phonodist scoring uses score-only mode. Explanations are collected only for legacy mismatch rows and selector disagreements. Review `selector_disagreements.csv` and compare the independent metric rankings before considering any threshold calibration.
-
 The reviewed calibration fixture is `fixtures/de_phonodist_calibration.tsv`. It records IPA pairs, expected relations, reasons, origins, and notes. It is evidence for later policy decisions, not a Phonodist classification threshold.
+
+## Structural comparison
+
+When Phonodist is available, the benchmark can report structural comparison evidence in addition to scalar distance. This is useful for migration audits where stress changes but segments remain identical.
+
+Structural comparison fields:
+
+- `phonetic_comparison_classification`: e.g., exact, stress_only, segmental
+- `phonetic_segment_relation`: e.g., exact, subset, superset
+- `phonetic_stress_equal`: boolean indicating stress equality
+- `phonetic_stress_operations`: list of stress transformation operations
+
+To enable structural comparison, set `comparison_metric` and `comparison_metric_version` in the PhoneticContext.
+
+## Provider parity benchmark
+
+Compare two provider configurations over an input list:
+
+```bash
+python benchmarks/provider_parity.py \
+  --provider espeak \
+  --language en-US \
+  --left-mode native \
+  --right-mode cli \
+  --input benchmarks/data/en_provider_parity.txt \
+  --json provider-parity.json \
+  --markdown provider-parity.md
+```
+
+The benchmark reports:
+
+- Raw exact equality between provider modes
+- Runtime diagnostics for both sides
+- Optional Phonodist classification when available

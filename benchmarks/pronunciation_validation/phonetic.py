@@ -29,9 +29,10 @@ class PhoneticContext:
     backend_version: str | None = None
     feature_set: str | None = None
     stress_policy: str | None = None
+    comparison_metric: str | None = None
+    comparison_metric_version: str | None = None
     error: str | None = None
     _module: Any = None
-
     @property
     def active(self) -> bool:
         return self.status == "active"
@@ -65,6 +66,8 @@ class PhoneticContext:
             "backend_version": provenance.backend_version,
             "feature_set": provenance.feature_set,
             "stress_policy": provenance.stress_policy,
+            "comparison_metric": self.comparison_metric,
+            "comparison_metric_version": self.comparison_metric_version,
             "error": provenance.error,
         }
 
@@ -204,6 +207,53 @@ def compare_variants(
     return tuple(results)
 
 
+def compare_structure(
+    candidate: str,
+    reference: str,
+    *,
+    context: PhoneticContext,
+) -> dict[str, Any]:
+    """Compare two IPA strings using Phonodist compare_pronunciations.
+
+    Returns JSON-safe evidence with classification, segment_relation,
+    segment_distance, stress_equal, and stress_operations.
+    """
+    if not context.active:
+        return {
+            "status": context.status,
+            "error": context.error,
+        }
+
+    module = context._module
+    try:
+        result = module.compare_pronunciations(
+            candidate,
+            reference,
+            language=context.requested_language,
+        )
+    except (module.InvalidIPAError, module.UnknownSegmentError) as error:
+        return {
+            "status": "unsupported_ipa",
+            "error": str(error),
+        }
+
+    return {
+        "status": "ok",
+        "classification": result.classification,
+        "segment_relation": result.segment_relation,
+        "segment_distance": result.segmental.distance,
+        "stress_equal": result.stress_equal,
+        "stress_operations": [
+            {
+                "source": list(op.source),
+                "target": list(op.target),
+                "kind": op.kind,
+                "cost": op.cost,
+                "reason": op.reason,
+            }
+            for op in result.stress_operations
+        ],
+    }
 def phonetic_comparison_metrics(rows: Sequence[dict[str, Any]]) -> dict[str, Any]:
     """Aggregate independently scored Phonodist row evidence."""
 

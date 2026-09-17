@@ -301,15 +301,19 @@ class EspeakProvider:
         """Return runtime diagnostics for debugging."""
         info = self.runtime_info
         return {
-            "requested_mode": getattr(info, "mode", None),
+            "requested_mode": getattr(info, "requested_mode", None),
             "implementation": getattr(info, "implementation", None),
             "version": self.version,
             "source": getattr(info, "source", None),
             "executable": self.executable,
             "library": getattr(info, "library", None),
             "data": getattr(info, "data", None),
+            "phoneme_output_api": getattr(info, "phoneme_output_api", None),
+            "phoneme_parity": getattr(info, "phoneme_parity", None),
+            "exact_clause_api": getattr(info, "exact_clause_api", None),
+            "fallback_code": getattr(info, "fallback_code", None),
+            "fallback_reason": getattr(info, "fallback_reason", None),
         }
-
     def close(self) -> None:
         if self._owns_runtime:
             self._runtime.close()
