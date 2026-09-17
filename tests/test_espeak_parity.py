@@ -6,14 +6,16 @@ library available. They are skipped when the environment cannot provide both bac
 
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+
 import pytest
 
 from lexphon.providers import EspeakProvider
 
-import sys
-from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 from _ipa_assertions import assert_same_ipa
+
 # Representative corpus for parity testing
 _CORPUS = (
     "hello",
@@ -36,7 +38,7 @@ def _has_native_backend() -> bool:
         result = provider.phonemize("test", _LANGUAGE)
         provider.close()
         return result is not None
-    except Exception:
+    except Exception:  # noqa: BLE001 - capability probe, catch any failure
         return False
 
 
@@ -47,7 +49,7 @@ def _has_cli_backend() -> bool:
         result = provider.phonemize("test", _LANGUAGE)
         provider.close()
         return result is not None
-    except Exception:
+    except Exception:  # noqa: BLE001 - capability probe, catch any failure
         return False
 
 

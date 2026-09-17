@@ -314,6 +314,7 @@ class EspeakProvider:
             "fallback_code": getattr(info, "fallback_code", None),
             "fallback_reason": getattr(info, "fallback_reason", None),
         }
+
     def close(self) -> None:
         if self._owns_runtime:
             self._runtime.close()

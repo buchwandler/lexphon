@@ -33,6 +33,7 @@ class PhoneticContext:
     comparison_metric_version: str | None = None
     error: str | None = None
     _module: Any = None
+
     @property
     def active(self) -> bool:
         return self.status == "active"
@@ -254,6 +255,8 @@ def compare_structure(
             for op in result.stress_operations
         ],
     }
+
+
 def phonetic_comparison_metrics(rows: Sequence[dict[str, Any]]) -> dict[str, Any]:
     """Aggregate independently scored Phonodist row evidence."""
 

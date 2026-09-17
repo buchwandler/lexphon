@@ -34,7 +34,9 @@ def _create_provider(provider: str, mode: str | None = None) -> Any:
 
 def _load_inputs(input_path: Path) -> list[str]:
     """Load input texts from file, one per line."""
-    return [line.strip() for line in input_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    return [
+        line.strip() for line in input_path.read_text(encoding="utf-8").splitlines() if line.strip()
+    ]
 
 
 def compare_providers(
@@ -60,12 +62,14 @@ def compare_providers(
             if is_exact:
                 exact_matches += 1
 
-            results.append({
-                "text": text,
-                "left": left_result,
-                "right": right_result,
-                "exact_match": is_exact,
-            })
+            results.append(
+                {
+                    "text": text,
+                    "left": left_result,
+                    "right": right_result,
+                    "exact_match": is_exact,
+                }
+            )
 
         # Collect runtime diagnostics
         left_diag = left.diagnostic_info() if hasattr(left, "diagnostic_info") else {}
@@ -118,22 +122,26 @@ def write_markdown_report(data: dict[str, Any], output_path: Path) -> None:
     for key, value in data["left_diagnostics"].items():
         lines.append(f"- {key}: {value}")
 
-    lines.extend([
-        "",
-        f"### Right ({data['right_mode']})",
-        "",
-    ])
+    lines.extend(
+        [
+            "",
+            f"### Right ({data['right_mode']})",
+            "",
+        ]
+    )
 
     for key, value in data["right_diagnostics"].items():
         lines.append(f"- {key}: {value}")
 
-    lines.extend([
-        "",
-        "## Results",
-        "",
-        "| Text | Left | Right | Match |",
-        "|------|------|-------|-------|",
-    ])
+    lines.extend(
+        [
+            "",
+            "## Results",
+            "",
+            "| Text | Left | Right | Match |",
+            "|------|------|-------|-------|",
+        ]
+    )
 
     for result in data["results"]:
         match_icon = "✓" if result["exact_match"] else "✗"
@@ -151,7 +159,9 @@ def main() -> None:
     parser.add_argument("--language", required=True, help="Language code (e.g., en-US)")
     parser.add_argument("--left-mode", required=True, help="Left provider mode (e.g., native)")
     parser.add_argument("--right-mode", required=True, help="Right provider mode (e.g., cli)")
-    parser.add_argument("--input", required=True, type=Path, help="Input file with one text per line")
+    parser.add_argument(
+        "--input", required=True, type=Path, help="Input file with one text per line"
+    )
     parser.add_argument("--json", type=Path, help="JSON output path")
     parser.add_argument("--markdown", type=Path, help="Markdown output path")
 
@@ -178,7 +188,9 @@ def main() -> None:
     print(f"Provider: {results['provider']}")
     print(f"Language: {results['language']}")
     print(f"Left: {results['left_mode']}, Right: {results['right_mode']}")
-    print(f"Exact matches: {results['exact_matches']}/{results['total_inputs']} ({results['exact_match_rate']:.2%})")
+    print(
+        f"Exact matches: {results['exact_matches']}/{results['total_inputs']} ({results['exact_match_rate']:.2%})"
+    )
 
     # Write reports
     if args.json:

@@ -146,6 +146,8 @@ class TestDiagnosticInfo:
         assert result["exact_clause_api"] == "exact_clause"
         assert result["fallback_code"] == "best-effort"
         assert result["fallback_reason"] == "no native clause API"
+
+
 class TestLifecycle:
     """EspeakProvider lifecycle contract tests."""
 

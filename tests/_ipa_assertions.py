@@ -41,16 +41,16 @@ def assert_same_ipa(
         module = _import_phonodist()
         if module is not None:
             try:
-                result = module.compare_pronunciations(
-                    left, right, language=language
+                result = module.compare_pronunciations(left, right, language=language)
+                message_parts.extend(
+                    [
+                        f"classification: {result.classification}",
+                        f"segment_relation: {result.segment_relation}",
+                        f"segment_distance: {result.segmental.distance}",
+                        f"stress_equal: {result.stress_equal}",
+                    ]
                 )
-                message_parts.extend([
-                    f"classification: {result.classification}",
-                    f"segment_relation: {result.segment_relation}",
-                    f"segment_distance: {result.segmental.distance}",
-                    f"stress_equal: {result.stress_equal}",
-                ])
-            except Exception as error:
+            except Exception as error:  # noqa: BLE001 - graceful degradation in test utility
                 message_parts.append(f"phonodist_error: {error}")
 
     raise AssertionError("\n".join(message_parts))
