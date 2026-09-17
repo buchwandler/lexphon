@@ -10,6 +10,14 @@ import pytest
 from lexphon.providers import _VALID_MODES, EspeakProvider
 
 
+def _owned_provider(monkeypatch: pytest.MonkeyPatch) -> tuple[EspeakProvider, MagicMock]:
+    runtime = MagicMock()
+    module = MagicMock()
+    module.EspeakRuntime.return_value = runtime
+    monkeypatch.setattr("lexphon.providers._load_espeak_runtime", lambda: module)
+    return EspeakProvider(), runtime
+
+
 class TestModeValidation:
     """EspeakProvider mode parameter validation."""
 
@@ -125,22 +133,15 @@ class TestLifecycle:
         provider.close()
         mock_runtime.close.assert_not_called()
 
-    def test_owned_runtime_closed(self) -> None:
+    def test_owned_runtime_closed(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Owned runtime is closed by provider."""
-        mock_runtime = MagicMock()
-        provider = EspeakProvider(runtime=None)
-        # Manually set the runtime since we can't construct a real one in tests
-        provider._runtime = mock_runtime
-        provider._owns_runtime = True
+        provider, mock_runtime = _owned_provider(monkeypatch)
         provider.close()
         mock_runtime.close.assert_called_once()
 
-    def test_double_close_safe(self) -> None:
+    def test_double_close_safe(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Double close() is safe at Lexphon layer."""
-        mock_runtime = MagicMock()
-        provider = EspeakProvider(runtime=None)
-        provider._runtime = mock_runtime
-        provider._owns_runtime = True
+        provider, mock_runtime = _owned_provider(monkeypatch)
         provider.close()
         provider.close()  # Should not raise
         assert mock_runtime.close.call_count == 2
@@ -149,13 +150,17 @@ class TestLifecycle:
 class TestPhonemizerFallbackLifecycle:
     """Phonemizer fallback lifecycle tests."""
 
-    def test_fallback_provider_created_lazily(self) -> None:
+    def test_fallback_provider_created_lazily(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Fallback provider is created lazily after a miss."""
         from lexphon.providers import create_provider
 
         # create_provider creates the provider immediately
         # This is a simplified test since we can't easily test the full Phonemizer
         # without a real lexicon store
+        mock_runtime = MagicMock()
+        module = MagicMock()
+        module.EspeakRuntime.return_value = mock_runtime
+        monkeypatch.setattr("lexphon.providers._load_espeak_runtime", lambda: module)
         provider = create_provider("espeak")
         assert provider is not None
         assert provider.name == "espeak"
