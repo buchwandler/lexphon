@@ -1,5 +1,12 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- Added `lexphon lookup` for encoding-agnostic inspection of stored G2Lex tags, variants, null selectors, and raw pronunciation values.
+- Added CLI-only opaque pronunciation display with explicit output encoding metadata while preserving the generic Python `Phonemizer` IPA contract.
+
 ## [v0.2.5] - 2026-09-17
 
 ### Added

@@ -56,6 +56,10 @@ The public result alphabet is IPA and every non-null pronunciation is Unicode NF
 
 Structured tokens preserve the original token, selected pronunciation, source category, logical lexicon, matched key, source encoding, structured variants, selector context, provider and requested language, punctuation state, and pronunciation provenance. `PronunciationToken.pronunciation`, `source_pronunciation`, and `language_markers` derive from the first variant. Unknown words remain explicit when no provider returns a pronunciation.
 
+## Normalization and storage inspection paths
+
+Lexphon has separate normalization and inspection/display paths. The generic Python `Phonemizer` accepts only source encodings that it can normalize to IPA, and its public pronunciation fields remain normalized IPA. Storage inspection is encoding-agnostic and may expose raw values from application-specific assets. The CLI may use that path for diagnostics through `lexphon lookup` or explicitly selected opaque `phonemize` output, but this does not change the `Phonemizer` result alphabet.
+
 ## KokoroG2P integration
 
 KokoroG2P should import the Lexphon Python API, not spawn the CLI:

@@ -61,6 +61,14 @@ Applications that intentionally need an older `*:gold` application-specific asse
 Use `--catalog PATH_OR_URL` and `--data-home PATH` for a local release or alternate store. Installation downloads the manifest first, verifies manifest and asset hashes and sizes, checks catalog and manifest identity, opens the G2Lex asset, and atomically activates a complete version. A copied, pre-populated store eliminates Lexphon catalog and lexicon downloads during runtime. Optional providers have separate provisioning requirements.
 The production German assets are `de-de:gold`, `de-de:crane`, `de-de:espeak`, and `de-de:olaph`. English CMUdict is available as the explicit ARPABET alternative `en-us:cmudict`. LexHint logical IDs use `:lexhint` for the preferred/default asset and `:lexhint-native` for an explicit native-Wiktionary alternative. Native-only languages such as Thai use only the native suffix; English's `en-us:lexhint` and `en-gb:lexhint` use native English Wiktionary.
 
+Lexphon's generic Python `Phonemizer` still returns normalized IPA only. The CLI also provides an encoding-agnostic inspection path for diagnostics:
+
+```bash
+lexphon lookup --language en-US --lexicon en-us:lexhint life
+lexphon phonemize --language en-US --lexicon en-us:gold "A meeting"
+```
+
+`lookup` shows every raw stored G2Lex tag and value. An explicitly selected application-specific asset such as `kokoro-v1` can be displayed unchanged by the CLI, but that does not make its encoding part of the generic Python API or turn it into IPA.
 Catalog pronunciation encodings are not all generic Phonemizer alphabets. Lexphon can discover, install, and verify application-specific assets such as `kokoro-v1`, but selecting one as a generic Phonemizer layer raises `UnsupportedAlphabetError`. Kokoro vocabulary conversion remains in KokoroG2P.
 
 Data release versions and the Lexphon Python package version are independent. Pin the data catalog or release during provisioning, and pin the Python dependency separately.
@@ -74,7 +82,23 @@ lexphon phonemize --language de-DE "Die Leute kommen."
 lexphon phonemize --language de-DE --lexicon de-de:crane "Die Leute kommen."
 lexphon phonemize --language de-DE --lexicon de-de:crane --tag DET "die"
 lexphon phonemize --language en-US --lexicon en-us:cmudict --json "read"
+lexphon lookup --language en-US --lexicon en-us:lexhint life
+lexphon phonemize --language en-US --lexicon en-us:gold "A meeting"
 ```
+
+The CLI lookup command inspects one installed entry without normalizing it:
+
+```bash
+lexphon lookup --language en-US --lexicon en-us:lexhint life
+```
+
+For an explicitly selected opaque application-specific asset, CLI display preserves the stored strings and identifies the output encoding:
+
+```bash
+lexphon phonemize --language en-US --lexicon en-us:gold "A meeting"
+```
+
+This raw display path is diagnostic only. The Python `Phonemizer` continues to require a source encoding that Lexphon can normalize to IPA.
 
 JSON output has `schema_version: 2` and contains the rendered IPA plus structured token fields: text, pronunciation, source category, provider, requested language, source encoding, logical lexicon ID, matched key, structured variants, selector tag, known status, punctuation status, and provenance metadata.
 

@@ -940,3 +940,139 @@ def test_explicit_phonemize_form_is_supported_and_legacy_form_is_rejected(
         main(["-v", "en-US", "hello"])
     with pytest.raises(SystemExit):
         main(["voices"])
+
+
+def test_cli_lookup_inspects_opaque_entry(
+    release: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    catalog = load_catalog(str(release))
+    store = DataStore(tmp_path / "store")
+    store.install(catalog.artifact("en-us:gold"))
+
+    assert (
+        main(
+            [
+                "lookup",
+                "--language",
+                "en-US",
+                "--lexicon",
+                "en-us:gold",
+                "--data-home",
+                str(store.root),
+                "hello",
+            ]
+        )
+        == 0
+    )
+    output = capsys.readouterr().out
+    assert "encoding:        kokoro-v1" in output
+    assert "kind:            scalar" in output
+    assert "  - KOKORO_HELLO" in output
+
+    assert (
+        main(
+            [
+                "lookup",
+                "--language",
+                "en-US",
+                "--lexicon",
+                "en-us:gold",
+                "--data-home",
+                str(store.root),
+                "--json",
+                "hello",
+            ]
+        )
+        == 0
+    )
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["source_encoding"] == "kokoro-v1"
+    assert payload["available_tags"] == []
+    assert payload["stored"] == [{"tag": None, "value": ["KOKORO_HELLO"]}]
+    assert payload["selected"] == ["KOKORO_HELLO"]
+
+
+def test_cli_opaque_display_preserves_raw_output_and_rejects_mixing(
+    release: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    catalog = load_catalog(str(release))
+    store = DataStore(tmp_path / "store")
+    store.install(catalog.artifact("en-us:gold"))
+    store.install(catalog.artifact("en-us:lexhint"))
+
+    assert (
+        main(
+            [
+                "phonemize",
+                "--language",
+                "en-US",
+                "--data-home",
+                str(store.root),
+                "--lexicon",
+                "en-us:gold",
+                "hello",
+            ]
+        )
+        == 0
+    )
+    captured = capsys.readouterr()
+    assert captured.out == "KOKORO_HELLO\n"
+    assert "displaying stored kokoro-v1 pronunciations unchanged" in captured.err
+
+    assert (
+        main(
+            [
+                "phonemize",
+                "--language",
+                "en-US",
+                "--data-home",
+                str(store.root),
+                "--lexicon",
+                "en-us:gold",
+                "--unknown",
+                "keep",
+                "hello missing!",
+            ]
+        )
+        == 0
+    )
+    captured = capsys.readouterr()
+    assert captured.out == "KOKORO_HELLO missing!\n"
+
+    assert (
+        main(
+            [
+                "phonemize",
+                "--language",
+                "en-US",
+                "--data-home",
+                str(store.root),
+                "--lexicon",
+                "en-us:gold",
+                "--lexicon",
+                "en-us:lexhint",
+                "hello",
+            ]
+        )
+        == 2
+    )
+    assert "cannot render mixed source encodings" in capsys.readouterr().err
+
+    assert (
+        main(
+            [
+                "phonemize",
+                "--language",
+                "en-US",
+                "--data-home",
+                str(store.root),
+                "--lexicon",
+                "en-us:gold",
+                "--fallback",
+                "espeak",
+                "hello",
+            ]
+        )
+        == 2
+    )
+    assert "fallback 'espeak' returns IPA" in capsys.readouterr().err

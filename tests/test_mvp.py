@@ -11,6 +11,7 @@ import pytest
 from lexphon import DataStore, LexiconNotInstalledError, Phonemizer, __version__
 from lexphon.alphabets import arpabet_to_ipa
 from lexphon.catalog import load_catalog
+from lexphon.inspection import inspect_entry
 
 
 def _sha(path: Path) -> str:
@@ -80,10 +81,38 @@ def _fixture_catalog(tmp_path: Path) -> Path:
     en_manifest = release / "en.manifest.json"
     _write_json(en_manifest, {"id": "en-us:demo-cmu", "asset_sha256": _sha(en_asset)})
 
+    inspection_source = tmp_path / "inspection.jsonl"
+    inspection_source.write_text(
+        '{"word":"read","kind":"tagged","items":[["DEFAULT","rɛd"],["VERB",["riːd","rɛd"]],["NOUN",null]]}\n'
+        '{"word":"empty","kind":"list","value":[]}\n'
+        '{"word":"wordonly","kind":"word"}\n',
+        encoding="utf-8",
+    )
+    inspection_asset = release / "inspection.g2lex"
+    g2lex.pack_file(
+        inspection_source,
+        inspection_asset,
+        input_format="jsonl",
+        source_id="test-inspection",
+        metadata={"pronunciation_alphabet": "ipa"},
+    )
+    inspection_manifest = release / "inspection.manifest.json"
+    _write_json(
+        inspection_manifest,
+        {"id": "en-us:demo-inspection", "asset_sha256": _sha(inspection_asset)},
+    )
     artifacts = []
     for identifier, language, name, encoding, asset, manifest in [
         ("de-de:demo", "de-DE", "demo", "ipa", de_asset, de_manifest),
         ("en-us:demo-cmu", "en-US", "demo-cmu", "arpabet", en_asset, en_manifest),
+        (
+            "en-us:demo-inspection",
+            "en-US",
+            "demo-inspection",
+            "ipa",
+            inspection_asset,
+            inspection_manifest,
+        ),
     ]:
         artifacts.append(
             {
@@ -256,3 +285,71 @@ def test_missing_default_lexicon_does_not_trigger_download(tmp_path: Path) -> No
     store = DataStore(tmp_path / "store")
     with pytest.raises(LexiconNotInstalledError):
         Phonemizer("de-DE", store=store)
+
+
+def test_inspection_preserves_tagged_storage_and_profile_candidates(tmp_path: Path) -> None:
+    catalog = load_catalog(str(_fixture_catalog(tmp_path)))
+    store = DataStore(tmp_path / "store")
+    store.install(catalog.artifact("en-us:demo-inspection"))
+
+    default = inspect_entry(
+        "Read",
+        language="en-US",
+        lexicon_id="en-us:demo-inspection",
+        store=store,
+    )
+    assert default is not None
+    assert default.matched_key == "read"
+    assert default.kind == "tagged"
+    assert default.available_tags == ("DEFAULT", "VERB", "NOUN")
+    assert [item.tag for item in default.stored] == ["DEFAULT", "VERB", "NOUN"]
+    assert default.selected_tag == "DEFAULT"
+    assert default.selected_via == "default"
+    assert default.selected_values == ("rɛd",)
+    assert default.stored[2].values is None
+
+    exact = inspect_entry(
+        "read",
+        language="en-US",
+        lexicon_id="en-us:demo-inspection",
+        tag="VERB",
+        store=store,
+    )
+    assert exact is not None
+    assert exact.selected_tag == "VERB"
+    assert exact.selected_via == "exact"
+    assert exact.selected_values == ("riːd", "rɛd")
+
+    fallback = inspect_entry(
+        "read",
+        language="en-US",
+        lexicon_id="en-us:demo-inspection",
+        tag="MISSING",
+        store=store,
+    )
+    assert fallback is not None
+    assert fallback.selected_tag == "DEFAULT"
+    assert fallback.selected_via == "default"
+
+    empty = inspect_entry(
+        "empty",
+        language="en-US",
+        lexicon_id="en-us:demo-inspection",
+        store=store,
+    )
+    assert empty is not None
+    assert empty.kind == "list"
+    assert empty.stored == (empty.stored[0],)
+    assert empty.stored[0].values == ()
+    assert empty.selected_values == ()
+
+    word_only = inspect_entry(
+        "wordonly",
+        language="en-US",
+        lexicon_id="en-us:demo-inspection",
+        store=store,
+    )
+    assert word_only is not None
+    assert word_only.kind == "word_only"
+    assert word_only.stored == ()
+    assert word_only.selected_values == ()

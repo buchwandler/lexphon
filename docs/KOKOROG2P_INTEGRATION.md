@@ -76,6 +76,15 @@ lexphon data install th:lexhint-native
 
 Lexphon's data layer may discover, install, and verify `kokoro-v1` assets, but the generic Phonemizer rejects them as unsupported layers. KokoroG2P owns Kokoro vocabulary conversion.
 
+The CLI can inspect that asset without normalization:
+
+```bash
+lexphon lookup --language en-US --lexicon en-us:gold hello
+lexphon phonemize --language en-US --lexicon en-us:gold "A meeting"
+```
+
+These commands display the stored `kokoro-v1` strings unchanged and identify the output encoding. They do not validate Kokoro vocabulary or transform the values. Kokoro-specific semantic interpretation and conversion remain in KokoroG2P; callers using the Python `Phonemizer` still receive `UnsupportedAlphabetError` for this encoding.
+
 ## German configuration
 
 German supports `de` and `de-de` aliases and defaults to `de-de:gold`. The application may preserve public names with an alias map:

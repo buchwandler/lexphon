@@ -1,33 +1,28 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from dataclasses import dataclass
 from types import TracebackType
-from typing import Any
 
 import g2lex
 
 from .alphabets import normalize_pronunciation
 from .errors import (
-    LexiconNotUsableError,
     ProviderError,
     ProviderExecutionError,
     ProviderOutputError,
     UnsupportedAlphabetError,
 )
-from .language import is_lexicon_language_compatible, normalize_language_tag
+from .language import normalize_language_tag
+from .layers import (
+    OpenedLexiconLayer,
+    ensure_normalizable_encoding,
+    open_installed_pronunciation_layer,
+)
 from .models import PhonemizationResult, PronunciationToken, PronunciationVariant
 from .profiles import LanguageProfile, ProfileRegistry
 from .providers import BatchPronunciationProvider, PronunciationProvider, create_provider
 from .store import DataStore
 from .tokenizer import tokenize
-
-
-@dataclass(slots=True)
-class _Layer:
-    identifier: str
-    encoding: str
-    lexicon: Any
 
 
 def _normalize_variants(
@@ -53,45 +48,21 @@ class Phonemizer:
         self.profile: LanguageProfile = (profiles or ProfileRegistry()).resolve(language)
         self.language = normalize_language_tag(self.profile.language)
         identifiers = tuple(lexicons) if lexicons is not None else self.profile.default_lexicons
-        self.layers: list[_Layer] = []
+        self.layers: list[OpenedLexiconLayer] = []
         try:
             for identifier in identifiers:
-                metadata = self.store.metadata(identifier)
-                kind = metadata.get("kind")
-                if kind != "pronunciation":
-                    raise LexiconNotUsableError(
-                        f"lexicon {identifier!r} has kind {kind!r}; only pronunciation lexica can be layers"
-                    )
-                metadata_language = metadata.get("language")
-                if not isinstance(metadata_language, str) or not is_lexicon_language_compatible(
-                    self.language, metadata_language
-                ):
-                    raise LexiconNotUsableError(
-                        f"lexicon {identifier!r} language {metadata.get('language')!r} is not compatible "
-                        f"with profile {self.profile.language!r}"
-                    )
-                encoding = metadata.get("phoneme_encoding")
-                if not isinstance(encoding, str) or encoding.casefold() == "none":
-                    raise LexiconNotUsableError(
-                        f"lexicon {identifier!r} has no pronunciation alphabet and cannot be a layer"
-                    )
-                if encoding.casefold().replace("-", "") not in {
-                    "ipa",
-                    "unicodeipa",
-                    "arpabet",
-                    "cmu",
-                    "cmudict",
-                }:
-                    raise UnsupportedAlphabetError(
-                        f"unsupported pronunciation encoding {encoding!r} for {identifier!r}"
-                    )
-                self.layers.append(
-                    _Layer(
-                        identifier=identifier,
-                        encoding=encoding,
-                        lexicon=g2lex.open(self.store.path(identifier)),
-                    )
+                layer = open_installed_pronunciation_layer(
+                    self.store,
+                    self.language,
+                    identifier,
+                    opener=g2lex.open,
                 )
+                try:
+                    ensure_normalizable_encoding(layer.encoding, identifier)
+                except Exception:
+                    layer.lexicon.close()
+                    raise
+                self.layers.append(layer)
             self._provider_name: str | None = None
             self.provider: PronunciationProvider | None = None
             self._owns_provider = False
@@ -184,7 +155,7 @@ class Phonemizer:
         self,
         *,
         token: str,
-        layer: _Layer,
+        layer: OpenedLexiconLayer,
         matched_key: str,
         value: g2lex.LexiconValue,
         tag: str | None,
